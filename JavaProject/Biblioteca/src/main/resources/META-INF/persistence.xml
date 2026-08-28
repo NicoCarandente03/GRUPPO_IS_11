@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+
+    <!-- Il nome DEVE corrispondere esattamente a quello scritto nel tuo JpaUtil -->
+    <persistence-unit name="BibliotecaPU" transaction-type="RESOURCE_LOCAL">
+
+        <!-- Provider JPA: Hibernate -->
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!-- Elenco esplicito delle classi (Ottima pratica per evitare mancate letture) -->
+        <class>entity.Bibliotecario</class>
+        <class>entity.SalaStudio</class>
+        <class>entity.Area</class>
+        <class>entity.Postazione</class>
+        <class>entity.Prenotazione</class>
+        <class>entity.Studente</class>
+
+        <properties>
+            <!-- 1. Configurazione della connessione a MySQL -->
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/biblioteca_db?serverTimezone=UTC"/>
+            <property name="jakarta.persistence.jdbc.user" value="root"/>
+            <property name="jakarta.persistence.jdbc.password" value="Siluett1!"/>
+            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+
+            <!-- 2. Ottimizzazione Hibernate -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+
+            <!-- Mostra le query in console formattate (Fondamentale per il debug) -->
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+
+            <!-- 3. Strategia di generazione delle tabelle -->
+            <property name="hibernate.hbm2ddl.auto" value="create"/>
+        </properties>
+    </persistence-unit>
+</persistence>
