@@ -4,7 +4,7 @@
              xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
              version="3.0">
 
-    <!-- Il nome DEVE corrispondere esattamente a quello scritto nel tuo JpaUtil -->
+    <!-- Il nome DEVE corrispondere esattamente a quello scritto in DBManager -->
     <persistence-unit name="BibliotecaPU" transaction-type="RESOURCE_LOCAL">
 
         <!-- Provider JPA: Hibernate -->
@@ -19,11 +19,8 @@
         <class>entity.Studente</class>
 
         <properties>
-            <!-- 1. Configurazione della connessione a MySQL -->
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/biblioteca_db?serverTimezone=UTC"/>
-            <property name="jakarta.persistence.jdbc.user" value="root"/>
-            <property name="jakarta.persistence.jdbc.password" value="Siluett1!"/>
-            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+            <!-- 1. I parametri di connessione non stanno qui: li legge DBManager da
+                 src/main/resources/db.properties, che e' escluso da git. -->
 
             <!-- 2. Ottimizzazione Hibernate -->
             <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
@@ -32,8 +29,10 @@
             <property name="hibernate.show_sql" value="true"/>
             <property name="hibernate.format_sql" value="true"/>
 
-            <!-- 3. Strategia di generazione delle tabelle -->
-            <property name="hibernate.hbm2ddl.auto" value="create"/>
+            <!-- 3. Strategia di generazione delle tabelle.
+                 update aggiunge le tabelle e le colonne mancanti senza cancellare
+                 i dati gia' presenti, a differenza di create. -->
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
         </properties>
     </persistence-unit>
 </persistence>

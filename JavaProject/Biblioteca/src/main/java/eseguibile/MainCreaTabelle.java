@@ -1,20 +1,26 @@
 package eseguibile;
 
-import database.JpaUtil;
+import database.DBManager;
 import jakarta.persistence.EntityManager;
 
+/**
+ * Eseguibile di servizio: apre la connessione e lascia che Hibernate crei o
+ * aggiorni le tabelle a partire dalle entity.
+ *
+ * Va lanciato una volta prima del primo avvio dell'applicazione, oppure dopo
+ * aver aggiunto o modificato una entity.
+ */
 public class MainCreaTabelle {
 
     public static void main(String[] args) {
-        System.out.println("Avvio di Hibernate in corso...");
+        System.out.println("Creazione delle tabelle in corso...");
 
-        // Questa singola riga accende la Factory e genera le tabelle in base al persistence.xml
-        EntityManager em = JpaUtil.getInstance().getEntityManager();
+        DBManager dbManager = DBManager.getInstance();
+        EntityManager em = dbManager.getEntityManager();
 
-        System.out.println("Tabelle generate con successo su MySQL!");
+        System.out.println("Tabelle create e mapping delle entity caricato.");
 
-        // Chiudiamo le risorse in modo pulito
         em.close();
-        JpaUtil.getInstance().close();
+        dbManager.closeConnection();
     }
 }

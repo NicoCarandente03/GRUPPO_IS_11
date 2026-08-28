@@ -1,91 +1,104 @@
 package entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+/**
+ * Studente registrato al servizio. Estende Utente e aggiunge la matricola, che
+ * e' anche la chiave primaria della tabella, e il contatore degli accessi.
+ */
 @Entity
-public class Studente {
+@Table(name = "Studente")
+public class Studente extends Utente {
 
     @Id
     private String matricola;
 
-    private String nome;
-    private String cognome;
-    private String email;
-    private String password;
     private int numAccessiTotali;
 
-    @OneToMany(mappedBy = "studente", cascade = CascadeType.ALL) // Relazione 1-a-molti: uno Studente ha una lista di Prenotazioni
+    // Associazione 1 - 0..* con Prenotazione
+    @OneToMany(mappedBy = "studente", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Prenotazione> prenotazioni = new ArrayList<>();
+
+    // Lato inverso della notifica: sola lettura, il salvataggio passa da NotificaDAO
+    @OneToMany(mappedBy = "destinatario")
+    private List<Notifica> notifiche = new ArrayList<>();
 
     public Studente() {
     }
 
     public Studente(String nome, String cognome, String email, String password, String matricola) {
-        this.nome=nome;
-        this.cognome=cognome;
-        this.email=email;
-        this.password=password;
-        this.matricola=matricola;
-        this.numAccessiTotali=0;
-        //this.prenotazioni è un ArrayList vuoto (associazione con molteplicità 0..*)
+        super(nome, cognome, email, password, RUOLO_STUDENTE);
+        this.matricola = matricola;
+        this.numAccessiTotali = 0;
+        // prenotazioni e notifiche restano liste vuote (molteplicita' 0..*)
     }
 
     public String getMatricola() {
         return matricola;
     }
 
-    public void setMatricola(String matricola) {
-        this.matricola = matricola;
+    /**
+     * Elenco delle prenotazioni dello studente.
+     *
+     * Restituisce una vista non modificabile, cosi' la lista si aggiorna solo
+     * tramite aggiungiPrenotazione e la coerenza dell'associazione resta a
+     * carico dell'entity.
+     */
+    public List<Prenotazione> elencaPrenotazioni() {
+        return Collections.unmodifiableList(prenotazioni);
     }
 
-    public String getNome() {
-        return nome;
+    /** Prenotazioni non ancora annullate ne' scadute. */
+    public List<Prenotazione> elencaPrenotazioniAttive() {
+        List<Prenotazione> attive = new ArrayList<>();
+        for (Prenotazione prenotazione : prenotazioni) {
+            if (prenotazione.isOccupante()) {
+                attive.add(prenotazione);
+            }
+        }
+        return attive;
     }
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getCognome() {
-        return cognome;
-    }
-
-    public void setCognome(String cognome) {
-        this.cognome = cognome;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
+    public void aggiungiPrenotazione(Prenotazione prenotazione) {
+        if (prenotazione == null || prenotazioni.contains(prenotazione)) {
+            return;
+        }
+        prenotazioni.add(prenotazione);
     }
 
     public int getNumAccessiTotali() {
         return numAccessiTotali;
     }
 
-    public void setNumAccessiTotali(int numAccessiTotali) {
-        this.numAccessiTotali = numAccessiTotali;
+    public void incrementaAccessi() {
+        this.numAccessiTotali++;
     }
 
-    public List<Prenotazione> getPrenotazioni() {
-        return prenotazioni;
+    /** Registra una notifica ricevuta, come nel flusso InvioNotifica. */
+    public void riceviNotifica(String testo) {
+        riceviNotifica(new Notifica(testo));
     }
 
-    public void setPrenotazioni(List<Prenotazione> prenotazioni) {
-        this.prenotazioni = prenotazioni;
+    /**
+     * Overload usato da Notifica.invia, che ha gia' costruito l'oggetto e non
+     * deve crearne un duplicato.
+     */
+    public void riceviNotifica(Notifica notifica) {
+        if (notifica == null || notifiche.contains(notifica)) {
+            return;
+        }
+        notifiche.add(notifica);
+    }
+
+    public List<Notifica> getNotifiche() {
+        return Collections.unmodifiableList(notifiche);
     }
 }

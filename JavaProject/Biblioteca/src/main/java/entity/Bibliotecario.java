@@ -1,81 +1,69 @@
 package entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+/**
+ * Bibliotecario che gestisce le sale studio. Estende Utente e aggiunge il codice
+ * identificativo, che e' anche la chiave primaria della tabella.
+ *
+ * Nel diagramma l'attributo si chiama codIdentificativo mentre il getter e'
+ * getCodiceIdentificativo: si usa il nome per esteso, coerente con il getter e
+ * con la traduzione delle classi nella documentazione.
+ */
 @Entity
-public class Bibliotecario {
+@Table(name = "Bibliotecario")
+public class Bibliotecario extends Utente {
 
     @Id
     private String codiceIdentificativo;
 
-    private String nome;
-    private String cognome;
-    private String email;
-    private String password;
-
-    @OneToMany(mappedBy = "bibliotecario", cascade = CascadeType.ALL)
+    // Associazione 1 - 0..* con SalaStudio
+    @OneToMany(mappedBy = "bibliotecario", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<SalaStudio> sale = new ArrayList<>();
 
     public Bibliotecario() {
     }
 
-    public Bibliotecario(String nome, String cognome, String email, String password, String codiceIdentificativo) {
-        this.nome=nome;
-        this.cognome=cognome;
-        this.email=email;
-        this.password=password;
-        this.codiceIdentificativo=codiceIdentificativo;
-        //this.sale è un ArrayList vuoto (associazione con molteplicità 0..*)
+    public Bibliotecario(String nome, String cognome, String email, String password,
+                         String codiceIdentificativo) {
+        super(nome, cognome, email, password, RUOLO_BIBLIOTECARIO);
+        this.codiceIdentificativo = codiceIdentificativo;
+        // sale resta una lista vuota (molteplicita' 0..*)
     }
 
     public String getCodiceIdentificativo() {
         return codiceIdentificativo;
     }
 
-    public void setCodiceIdentificativo(String codiceIdentificativo) {
-        this.codiceIdentificativo = codiceIdentificativo;
+    /**
+     * Sale gestite dal bibliotecario. Serve a
+     * GestioneSaleController.getElencoSaleGestite(), che nel flusso
+     * EliminazioneSalaStudio parte dal codice identificativo.
+     */
+    public List<SalaStudio> getSaleGestite() {
+        return Collections.unmodifiableList(sale);
     }
 
-    public String getNome() {
-        return nome;
+    /** Mantiene allineati i due lati dell'associazione. */
+    public void aggiungiSala(SalaStudio sala) {
+        if (sala == null || sale.contains(sala)) {
+            return;
+        }
+        sale.add(sala);
+        sala.setBibliotecario(this);
     }
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getCognome() {
-        return cognome;
-    }
-
-    public void setCognome(String cognome) {
-        this.cognome = cognome;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public List<SalaStudio> getSale() {
-        return sale;
-    }
-
-    public void setSale(List<SalaStudio> sale) {
-        this.sale = sale;
+    public void rimuoviSala(SalaStudio sala) {
+        if (sala != null && sale.remove(sala)) {
+            sala.setBibliotecario(null);
+        }
     }
 }

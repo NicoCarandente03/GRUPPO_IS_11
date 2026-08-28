@@ -1,0 +1,9 @@
+# Copiare questo file in db.properties e compilarlo con i propri dati.
+# db.properties e' escluso da git, quindi le credenziali non finiscono nella repo.
+
+db.host=localhost
+db.port=3306
+db.name=biblioteca_db
+db.user=INSERIRE_UTENTE
+db.password=INSERIRE_PASSWORD
+db.params=serverTimezone=UTC

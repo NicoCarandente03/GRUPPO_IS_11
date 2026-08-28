@@ -1,33 +1,35 @@
 package database;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 
-public class JpaUtil {
-
-    private static JpaUtil instance;
-    private EntityManagerFactory emf;
+/**
+ * Scorciatoia per ottenere un EntityManager senza passare esplicitamente da
+ * DBManager.
+ *
+ * Non apre una EntityManagerFactory propria: delega tutto a DBManager, che resta
+ * il singleton di accesso ai dati previsto dal diagramma di design. Cosi' i
+ * parametri di connessione restano in db.properties invece di stare nel
+ * persistence.xml.
+ */
+public final class JpaUtil {
 
     private JpaUtil() {
-        // Il nome "BibliotecaPU" deve essere identico a quello scritto nel tuo file persistence.xml
-        this.emf = Persistence.createEntityManagerFactory("BibliotecaPU");
+    }
+
+    /** Holder idiom: creazione al primo accesso e thread safe. */
+    private static final class Holder {
+        private static final JpaUtil ISTANZA = new JpaUtil();
     }
 
     public static JpaUtil getInstance() {
-        if (instance == null) {
-            instance = new JpaUtil();
-        }
-        return instance;
+        return Holder.ISTANZA;
     }
 
     public EntityManager getEntityManager() {
-        return emf.createEntityManager();
+        return DBManager.getInstance().getEntityManager();
     }
 
-    public void close() {
-        if (emf != null && emf.isOpen()) {
-            emf.close();
-        }
+    public void chiudi() {
+        DBManager.getInstance().closeConnection();
     }
 }
