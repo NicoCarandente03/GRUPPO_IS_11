@@ -41,6 +41,10 @@ public class Prenotazione {
 
     private String stato;
 
+    //LI HA AGGIUNTI NICO, POI PARLAIMO, NON SO COME RISOLVERE
+    private Area area;
+    private SalaStudio sala;
+
     @ManyToOne
     @JoinColumn(name = "matricola")
     private Studente studente;
@@ -76,30 +80,43 @@ public class Prenotazione {
     public String getIdPrenotazione() {
         return idPrenotazione;
     }
+    public void setIdPrenotazione(String idPrenotazione) { this.idPrenotazione = idPrenotazione; }
 
     public LocalDate getData() {
         return data;
     }
+    public void setData(LocalDate data) { this.data = data; }
 
     public String getFasciaOraria() {
         return fasciaOraria;
     }
+    public void setFasciaOraria(String fasciaOraria) { this.fasciaOraria = fasciaOraria; }
 
     public String getStato() {
         return stato;
     }
+    public void setStato(String stato) { this.stato = stato; }
 
     public Studente getStudente() {
         return studente;
+    }
+    public void setStudente(Studente studente) {
+        this.studente = studente;
     }
 
     public Postazione getPostazione() {
         return postazione;
     }
+    public void setPostazione(Postazione postazione) {
+        this.postazione = postazione;
+    }
 
     /** Area della postazione prenotata, risalita per navigazione. */
     public Area getArea() {
         return postazione == null ? null : postazione.getArea();
+    }
+    public void setArea(Area area) {
+        this.area = area;
     }
 
     /** Sala della postazione prenotata, risalita per navigazione. */
@@ -107,6 +124,11 @@ public class Prenotazione {
         Area areaPrenotata = getArea();
         return areaPrenotata == null ? null : areaPrenotata.getSalaStudio();
     }
+    public void setSala(SalaStudio sala) {
+        this.sala = sala;
+    }
+
+
 
     /**
      * Registra la presenza dello studente
