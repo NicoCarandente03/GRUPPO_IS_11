@@ -1,49 +1,29 @@
 package entity;
 
 import external.ServizioDiNotifiche;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
- * Notifica inviata a uno studente.
+ * Messaggio inviato a uno studente.
  *
- * Il modello di dominio prevede la dipendenza da ServizioDiNotifiche: per
- * mantenerla senza legare l'entity a una implementazione concreta, il servizio
- * viene iniettato da un costruttore aggiuntivo ed e' marcato Transient, quindi
- * non finisce sul database.
+ * Non e' una entity e non ha una tabella: i requisiti sui dati non elencano la
+ * Notifica fra le informazioni da memorizzare, e nel diagramma delle classi
+ * compare solo con dipendenze d'uso, non con associazioni. La notifica viene
+ * creata, consegnata al servizio esterno e non conservata sul database.
  *
- * L'identificativo non compare fra gli attributi del diagramma ma serve come
- * chiave primaria: viene generato nel costruttore.
+ * Il modello di dominio prevede la dipendenza verso ServizioDiNotifiche: per
+ * mantenerla senza legare la classe a una implementazione concreta, il servizio
+ * viene iniettato da un costruttore aggiuntivo.
  */
-@Entity
-@Table(name = "Notifica")
 public class Notifica {
 
-    @Id
-    private String idNotifica;
-
-    private String testo;
+    private final String testo;
     private LocalDateTime dataInvio;
-
-    @ManyToOne
-    @JoinColumn(name = "matricola")
     private Studente destinatario;
-
-    @Transient
     private ServizioDiNotifiche servizio;
 
-    public Notifica() {
-    }
-
     public Notifica(String testo) {
-        this.idNotifica = UUID.randomUUID().toString();
         this.testo = testo;
     }
 
@@ -54,10 +34,6 @@ public class Notifica {
     public Notifica(String testo, ServizioDiNotifiche servizio) {
         this(testo);
         this.servizio = servizio;
-    }
-
-    public String getIdNotifica() {
-        return idNotifica;
     }
 
     public String getTesto() {
@@ -78,10 +54,10 @@ public class Notifica {
 
     /**
      * Invia la notifica allo studente tramite il servizio esterno e la registra
-     * fra quelle ricevute, come nel flusso InvioNotifica.
+     * fra quelle ricevute nella sessione, come nel flusso InvioNotifica.
      *
      * Se il servizio non e' stato iniettato la notifica viene comunque
-     * registrata: e' il caso delle notifiche solo interne.
+     * registrata: e' il caso dei messaggi solo interni.
      */
     public void invia(Studente destinatario) {
         this.destinatario = destinatario;

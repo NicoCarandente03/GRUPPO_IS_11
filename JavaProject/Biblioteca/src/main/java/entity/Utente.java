@@ -2,21 +2,11 @@ package entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Transient;
 
 /**
  * Superclasse astratta di Studente e Bibliotecario, come da generalizzazione del
  * modello di dominio.
- *
- * E' annotata MappedSuperclass e non Entity perche' la documentazione di
- * progetto sceglie la traduzione con una tabella per ogni sottoclasse: non esiste
- * una tabella Utente, e gli attributi comuni vengono ripetuti nelle tabelle
- * Studente e Bibliotecario. Ogni sottoclasse dichiara la propria chiave primaria.
- *
- * Conseguenza da tenere presente: l'unicita' dell'email vale dentro ciascuna
- * tabella, non fra le due. Il controllo complessivo lo fa UtenteDAO
- * interrogando entrambe.
- *
- * Gli attributi sono protected, come indica il diagramma delle classi.
  */
 @MappedSuperclass
 public abstract class Utente {
@@ -33,18 +23,19 @@ public abstract class Utente {
 
     protected String password;
 
+    @Transient
     private String ruolo;
 
-    /** Costruttore senza argomenti richiesto da JPA. */
-    protected Utente() {
+    protected Utente(String ruolo) {
+        this.ruolo = ruolo;
     }
 
     protected Utente(String nome, String cognome, String email, String password, String ruolo) {
+        this(ruolo);
         this.nome = nome;
         this.cognome = cognome;
         this.email = email;
         this.password = password;
-        this.ruolo = ruolo;
     }
 
     public String getNome() {

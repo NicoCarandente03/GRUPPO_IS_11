@@ -14,10 +14,9 @@ import java.time.LocalDateTime;
  * Prenotazione di una postazione da parte di uno studente, per una data e una
  * fascia oraria.
  *
- * Oltre a Studente e Postazione conserva anche l'Area e la SalaStudio: sono
- * ridondanti rispetto alla navigazione postazione, area, sala, ma il costruttore
- * del diagramma li riceve esplicitamente e le ricerche per sala del monitoraggio
- * ne hanno bisogno.
+ * Non tiene riferimenti diretti all'Area e alla SalaStudio: si risalgono
+ * navigando la postazione prenotata, con getPostazione, getArea e getSalaStudio.
+ * Tenerli anche qui sarebbe una ridondanza.
  *
  * I predicati temporali hanno un overload che riceve l'istante di riferimento:
  * la versione senza parametro usa l'ora corrente, quella con parametro rende i
@@ -50,28 +49,18 @@ public class Prenotazione {
     @JoinColumn(name = "idPostazione")
     private Postazione postazione;
 
-    @ManyToOne
-    @JoinColumn(name = "idArea")
-    private Area area;
-
-    @ManyToOne
-    @JoinColumn(name = "idSala")
-    private SalaStudio sala;
-
     public Prenotazione() {
     }
 
-    public Prenotazione(String idPrenotazione, SalaStudio sala, Studente studente, LocalDate data,
-                        String fasciaOraria, Area area, Postazione postazione) {
+    public Prenotazione(String idPrenotazione, LocalDate data, String fasciaOraria,
+                        Studente studente, Postazione postazione) {
         if (!FasceOrarie.isValida(fasciaOraria)) {
             throw new BusinessException("Fascia oraria non valida: " + fasciaOraria);
         }
         this.idPrenotazione = idPrenotazione;
-        this.sala = sala;
-        this.studente = studente;
         this.data = data;
         this.fasciaOraria = fasciaOraria;
-        this.area = area;
+        this.studente = studente;
         this.postazione = postazione;
         attiva();
 
@@ -108,21 +97,19 @@ public class Prenotazione {
         return postazione;
     }
 
+    /** Area della postazione prenotata, risalita per navigazione. */
     public Area getArea() {
-        return area;
+        return postazione == null ? null : postazione.getArea();
     }
 
+    /** Sala della postazione prenotata, risalita per navigazione. */
     public SalaStudio getSala() {
-        return sala;
+        Area areaPrenotata = getArea();
+        return areaPrenotata == null ? null : areaPrenotata.getSalaStudio();
     }
 
     /**
-     * Registra la presenza dello studente.
-     *
-     * Nel diagramma checkin e' void, ma il flusso Check-in distingue l'esito
-     * positivo dai due errori, quindi il metodo restituisce boolean. Il
-     * parametro con l'intervallo consentito arriva da
-     * GestionePrenotazioneController.intervalloCheckInMinuti.
+     * Registra la presenza dello studente
      */
     public boolean checkin(int intervalloCheckinMinuti) {
         return checkin(intervalloCheckinMinuti, LocalDateTime.now());
@@ -139,9 +126,6 @@ public class Prenotazione {
     /**
      * Annulla la prenotazione se il limite temporale non e' ancora superato e
      * libera la postazione.
-     *
-     * Nel diagramma annulla e' void, ma il flusso AnnullamentoPrenotazione ne usa
-     * l'esito booleano.
      */
     public boolean annulla(int limiteAnnullamentoMinuti) {
         return annulla(limiteAnnullamentoMinuti, LocalDateTime.now());
@@ -199,11 +183,7 @@ public class Prenotazione {
      * studente puo' confermare poco prima di entrare e ha ancora un margine dopo
      * l'inizio, superato il quale la prenotazione scade.
      *
-     * Il valore dell'intervallo e' configurabile, come chiede il requisito RF17.
-     *
-     * Nel diagramma il metodo e' privato e void, ma il flusso Check-in mostra il
-     * controller che lo invoca e ne usa l'esito, quindi qui e' pubblico e
-     * restituisce boolean.
+     * Il valore dell'intervallo e' configurabile
      */
     public boolean isCheckinValido(int intervalloCheckinMinuti) {
         return isCheckinValido(intervalloCheckinMinuti, LocalDateTime.now());
@@ -238,9 +218,6 @@ public class Prenotazione {
     /**
      * Vero se l'inizio della fascia e' imminente, cioe' entro minutiPreavviso.
      * Usato da NotificaController per l'invio del promemoria.
-     *
-     * Nel diagramma il tipo di ritorno e' String, ma il flusso InvioPromemoria
-     * usa esitoAvvicinamento come booleano.
      */
     public boolean isInAvvicinamento(int minutiPreavviso) {
         return isInAvvicinamento(minutiPreavviso, LocalDateTime.now());
@@ -256,6 +233,7 @@ public class Prenotazione {
 
     /** Testo con sala, data e fascia oraria da inserire nel promemoria. */
     public String getDatiPromemoria() {
+        SalaStudio sala = getSala();
         String nomeSala = sala == null ? "sala non specificata" : sala.getNome();
         return "Prenotazione presso " + nomeSala + " del " + data + ", fascia " + fasciaOraria;
     }

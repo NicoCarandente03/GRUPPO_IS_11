@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,11 +28,12 @@ public class Studente extends Utente {
     @OneToMany(mappedBy = "studente", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Prenotazione> prenotazioni = new ArrayList<>();
 
-    // Lato inverso della notifica: sola lettura, il salvataggio passa da NotificaDAO
-    @OneToMany(mappedBy = "destinatario")
+    // Le notifiche non sono persistenti: restano in memoria per la sessione
+    @Transient
     private List<Notifica> notifiche = new ArrayList<>();
 
     public Studente() {
+        super(RUOLO_STUDENTE);
     }
 
     public Studente(String nome, String cognome, String email, String password, String matricola) {

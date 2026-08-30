@@ -30,6 +30,7 @@ public class Bibliotecario extends Utente {
     private List<SalaStudio> sale = new ArrayList<>();
 
     public Bibliotecario() {
+        super(RUOLO_BIBLIOTECARIO);
     }
 
     public Bibliotecario(String nome, String cognome, String email, String password,
