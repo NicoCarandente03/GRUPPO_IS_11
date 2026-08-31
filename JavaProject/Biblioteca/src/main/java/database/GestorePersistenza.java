@@ -42,6 +42,32 @@ public class GestorePersistenza {
         }
     }
 
+    /**
+     * Salva piu' oggetti nella stessa transazione.
+     */
+    public void salvaTutti(Object... entita) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
+        try {
+            em.getTransaction().begin();
+            for (Object entita_i : entita) {
+                em.persist(entita_i);
+            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            e.printStackTrace();
+
+            throw new RuntimeException("Errore durante il salvataggio multiplo nel database.");
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
     public void aggiorna(Object entity) {
         EntityManager em = DBManager.getInstance().getEntityManager();
 
