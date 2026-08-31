@@ -100,21 +100,6 @@ public class SalaStudio {
         area.setSalaStudio(this);
     }
 
-    /**
-     * Aggiunge una postazione alla sala.
-     *
-     * Il diagramma dichiara questo metodo sia su SalaStudio sia su Area, ma una
-     * postazione appartiene sempre a un'area: la sala la inoltra all'ultima area
-     * registrata, cioe' quella che si sta popolando durante la creazione.
-     */
-    public void aggiungiPostazione(Postazione postazione) {
-        if (aree.isEmpty()) {
-            throw new BusinessException(
-                    "Impossibile aggiungere una postazione: la sala non ha aree");
-        }
-        aree.get(aree.size() - 1).aggiungiPostazione(postazione);
-    }
-
     public void rimuoviArea(String idArea) {
         Area area = trovaArea(idArea);
         if (area == null) {
@@ -164,12 +149,9 @@ public class SalaStudio {
 
     /**
      * Fasce orarie in cui la sala ha ancora postazioni libere nella data
-     * indicata. Il parametro idSala e' ridondante perche' il metodo e' gia'
-     * invocato sull'istanza, ma resta per rispettare la firma del diagramma e
-     * viene usato come controllo.
+     * indicata.
      */
-    public List<String> getFasceOrarieDisponibili(LocalDate data, String idSala) {
-        verificaIdSala(idSala);
+    public List<String> getFasceOrarieDisponibili(LocalDate data) {
         List<String> disponibili = new ArrayList<>();
         for (String fasciaOraria : FasceOrarie.getElenco()) {
             if (isDisponibile(data, fasciaOraria)) {
@@ -179,8 +161,7 @@ public class SalaStudio {
         return disponibili;
     }
 
-    public List<Area> getAreeDisponibili(LocalDate data, String fasciaOraria, String idSala) {
-        verificaIdSala(idSala);
+    public List<Area> getAreeDisponibili(LocalDate data, String fasciaOraria) {
         List<Area> disponibili = new ArrayList<>();
         for (Area area : aree) {
             if (area.isDisponibile(data, fasciaOraria)) {
@@ -191,8 +172,7 @@ public class SalaStudio {
     }
 
     public List<Postazione> getPostazioniDisponibili(LocalDate data, String fasciaOraria,
-                                                     String idSala, String idArea) {
-        verificaIdSala(idSala);
+                                                     String idArea) {
         Area area = trovaArea(idArea);
         if (area == null) {
             return new ArrayList<>();
@@ -216,9 +196,6 @@ public class SalaStudio {
     /**
      * Controllo complessivo prima di creare una prenotazione: fascia ammessa,
      * area della sala, postazione dell'area e ancora libera.
-     *
-     * Nel diagramma il metodo e' void, ma il flusso EffettuaPrenotazione ne usa
-     * l'esito booleano.
      */
     public boolean validaDisponibilita(LocalDate data, String fasciaOraria, String idArea,
                                        String idPostazione) {
@@ -267,12 +244,6 @@ public class SalaStudio {
             totale += area.getNumPostazioni();
         }
         return totale;
-    }
-
-    private void verificaIdSala(String idSala) {
-        if (idSala != null && !idSala.equals(this.idSala)) {
-            throw new BusinessException("Identificativo della sala non corrispondente: " + idSala);
-        }
     }
 
     @Override
