@@ -84,7 +84,14 @@ public class SalaStudio {
         return bibliotecario;
     }
 
-    void setBibliotecario(Bibliotecario bibliotecario) {
+    /**
+     * Assegna il bibliotecario che gestisce la sala.
+     *
+     * E' questo il lato che possiede l'associazione, cioe' quello che porta la
+     * chiave esterna: assegnare qui e' sufficiente perche' il legame venga
+     * salvato. La lista sul bibliotecario e' il lato inverso, di sola lettura.
+     */
+    public void setBibliotecario(Bibliotecario bibliotecario) {
         this.bibliotecario = bibliotecario;
     }
 

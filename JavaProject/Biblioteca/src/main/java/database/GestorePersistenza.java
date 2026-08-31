@@ -9,6 +9,7 @@ import entity.SalaStudio;
 import entity.Studente;
 import entity.Postazione;
 import entity.Area;
+import entity.Bibliotecario;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -117,6 +118,53 @@ public class GestorePersistenza {
         }
 
         return prenotazioni;
+    }
+
+    //Metodi utilizzati in CreazioneAulaStudio
+
+    /**
+     * Cerca una sala dal nome, che il modello di dominio vuole unico.
+     *
+     * Restituisce null se non esiste: e' il controllo che impedisce di creare
+     * due sale con lo stesso nome.
+     */
+    public SalaStudio trovaSalaPerNome(String nome) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
+        try {
+            String jpql = "SELECT s FROM SalaStudio s WHERE s.nome = :nome";
+            TypedQuery<SalaStudio> query = em.createQuery(jpql, SalaStudio.class);
+            query.setParameter("nome", nome);
+
+            List<SalaStudio> risultati = query.getResultList();
+            return risultati.isEmpty() ? null : risultati.get(0);
+
+        } catch (Exception e) {
+            System.err.println("Errore durante la ricerca della sala per nome: " + e.getMessage());
+            return null;
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Cerca un bibliotecario dalla sua chiave primaria.
+     */
+    public Bibliotecario trovaPerCodiceIdentificativo(String codiceIdentificativo) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
+        try {
+            return em.find(Bibliotecario.class, codiceIdentificativo);
+        } catch (Exception e) {
+            System.err.println("Errore durante la ricerca del bibliotecario: " + e.getMessage());
+            return null;
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
     }
 
     public void aggiorna(Object entity) {
