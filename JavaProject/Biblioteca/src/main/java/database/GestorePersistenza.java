@@ -167,6 +167,86 @@ public class GestorePersistenza {
         }
     }
 
+    //Metodo utilizzato in ConsultazioneStoricoPrenotazioni
+
+    /**
+     * Storico delle prenotazioni, con due filtri entrambi facoltativi.
+     *
+     * La parte WHERE viene composta solo con i filtri effettivamente
+     * valorizzati: se non ne arriva nessuno la query restituisce l'intero
+     * storico, come chiede il caso di test senza filtri.
+     *
+     * Il nome della sala si raggiunge navigando dalla postazione all'area e
+     * dall'area alla sala, perche' la prenotazione non tiene un riferimento
+     * diretto alla sala.
+     */
+    public List<Prenotazione> trovaPrenotazioniStoriche(String nomeSala, String matricolaStudente) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+        List<Prenotazione> risultati = new ArrayList<>();
+
+        boolean filtraPerSala = nomeSala != null && !nomeSala.trim().isEmpty();
+        boolean filtraPerStudente = matricolaStudente != null && !matricolaStudente.trim().isEmpty();
+
+        try {
+            StringBuilder jpql = new StringBuilder("SELECT p FROM Prenotazione p");
+            String congiunzione = " WHERE ";
+
+            if (filtraPerSala) {
+                jpql.append(congiunzione).append("p.postazione.area.sala.nome = :nomeSala");
+                congiunzione = " AND ";
+            }
+            if (filtraPerStudente) {
+                jpql.append(congiunzione).append("p.studente.matricola = :matricola");
+            }
+
+            jpql.append(" ORDER BY p.data DESC, p.fasciaOraria");
+
+            TypedQuery<Prenotazione> query = em.createQuery(jpql.toString(), Prenotazione.class);
+            if (filtraPerSala) {
+                query.setParameter("nomeSala", nomeSala.trim());
+            }
+            if (filtraPerStudente) {
+                query.setParameter("matricola", matricolaStudente.trim());
+            }
+
+            risultati = query.getResultList();
+
+        } catch (Exception e) {
+            System.err.println("Errore durante la ricerca dello storico: " + e.getMessage());
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+
+        return risultati;
+    }
+
+    /**
+     * Elenco di tutte le sale registrate, in ordine di nome.
+     *
+     * E' l'operazione trovaTutteLeSale del diagramma. Serve alla finestra dello
+     * storico per proporre le sale in un menu a tendina, invece di far digitare
+     * il nome.
+     */
+    public List<SalaStudio> trovaTutteLeSale() {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+        List<SalaStudio> sale = new ArrayList<>();
+
+        try {
+            String jpql = "SELECT s FROM SalaStudio s ORDER BY s.nome";
+            sale = em.createQuery(jpql, SalaStudio.class).getResultList();
+        } catch (Exception e) {
+            System.err.println("Errore durante la lettura delle sale: " + e.getMessage());
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+
+        return sale;
+    }
+
     public void aggiorna(Object entity) {
         EntityManager em = DBManager.getInstance().getEntityManager();
 
