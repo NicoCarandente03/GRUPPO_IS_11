@@ -66,6 +66,17 @@ public class GestionePrenotazioneController {
         return intervalloCheckInMinuti;
     }
 
+
+    /**
+     * Costruttore usato dai test, che passano un finto GestorePersistenza al
+     * posto di quello reale. Non e' pubblico proprio per non essere usato
+     * altrove: l'applicazione passa sempre da getInstance().
+     */
+    GestionePrenotazioneController(GestorePersistenza gestoreDB) {
+        this.gestoreDB = gestoreDB;
+        caricaConfigurazione();
+    }
+
     public static GestionePrenotazioneController getInstance() {
         if (instance == null) {
             instance = new GestionePrenotazioneController();

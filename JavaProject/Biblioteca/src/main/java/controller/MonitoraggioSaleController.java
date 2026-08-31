@@ -22,6 +22,16 @@ public class MonitoraggioSaleController {
         this.gestoreDB = new GestorePersistenza();
     }
 
+
+    /**
+     * Costruttore usato dai test, che passano un finto GestorePersistenza al
+     * posto di quello reale. Non e' pubblico proprio per non essere usato
+     * altrove: l'applicazione passa sempre da getInstance().
+     */
+    MonitoraggioSaleController(GestorePersistenza gestoreDB) {
+        this.gestoreDB = gestoreDB;
+    }
+
     public static MonitoraggioSaleController getInstance() {
         if (instance == null) {
             instance = new MonitoraggioSaleController();

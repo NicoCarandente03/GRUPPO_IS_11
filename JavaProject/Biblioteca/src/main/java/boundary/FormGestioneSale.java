@@ -30,10 +30,8 @@ import java.util.List;
  * Il codice del bibliotecario arriva al costruttore da chi apre la finestra
  *
  * La finestra non conosce le Entity: passa i dati grezzi a
- * GestioneSaleController e riceve indietro un SalaStudioDTO da mostrare. Le
- * regole di validita' stanno tutte nel controller, tranne la conversione del
- * numero di postazioni, che e' un problema di formato del testo digitato e va
- * intercettato qui.
+ * GestioneSaleController, cosi' come li ha digitati l'utente, e riceve indietro
+ * un SalaStudioDTO da mostrare. Tutte le regole di validita' stanno nel controller
  */
 public class FormGestioneSale implements BoundaryGestioneSale {
 
@@ -131,15 +129,6 @@ public class FormGestioneSale implements BoundaryGestioneSale {
 
     @Override
     public void creazioneAulaStudio() {
-        int numPostazioni;
-
-        try {
-            numPostazioni = Integer.parseInt(campoPostazioni.getText().trim());
-        } catch (NumberFormatException e) {
-            mostraErrore("Errore, formato numero postazioni non valido!");
-            return;
-        }
-
         List<String> tipiArea = new ArrayList<>();
         for (int i = 0; i < modelloAree.size(); i++) {
             tipiArea.add(modelloAree.get(i));
@@ -149,7 +138,7 @@ public class FormGestioneSale implements BoundaryGestioneSale {
             SalaStudioDTO sala = controller.creazioneAulaStudio(
                     campoNome.getText().trim(),
                     campoDescrizione.getText().trim(),
-                    numPostazioni,
+                    campoPostazioni.getText().trim(),
                     campoOrari.getText().trim(),
                     tipiArea,
                     codiceBibliotecario);

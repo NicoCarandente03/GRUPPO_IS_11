@@ -42,6 +42,16 @@ public class GestioneSaleController {
         this.gestoreDB = new GestorePersistenza();
     }
 
+
+    /**
+     * Costruttore usato dai test, che passano un finto GestorePersistenza al
+     * posto di quello reale. Non e' pubblico proprio per non essere usato
+     * altrove: l'applicazione passa sempre da getInstance().
+     */
+    GestioneSaleController(GestorePersistenza gestoreDB) {
+        this.gestoreDB = gestoreDB;
+    }
+
     public static GestioneSaleController getInstance() {
         if (instance == null) {
             instance = new GestioneSaleController();
@@ -65,17 +75,19 @@ public class GestioneSaleController {
      * Le postazioni vengono distribuite equamente fra le aree
      */
     public SalaStudioDTO creazioneAulaStudio(String nome, String descrizione,
-                                             int numPostazioniTotali, String orariApertura,
+                                             String numPostazioniTotali, String orariApertura,
                                              List<String> tipiArea, String codiceBibliotecario) {
 
         verificaDatiValidi(nome, descrizione, numPostazioniTotali, orariApertura, tipiArea);
+
+        int numPostazioni = leggiNumeroPostazioni(numPostazioniTotali);
 
         if (gestoreDB.trovaSalaPerNome(nome) != null) {
             throw new BusinessException("Errore, esiste già una sala con questo nome!");
         }
 
         SalaStudio sala = new SalaStudio(generaIdSala(), nome, descrizione,
-                numPostazioniTotali, orariApertura);
+                numPostazioni, orariApertura);
 
         Bibliotecario bibliotecario = gestoreDB.trovaPerCodiceIdentificativo(codiceBibliotecario);
         if (bibliotecario == null) {
@@ -89,7 +101,7 @@ public class GestioneSaleController {
         // chiave esterna, quindi basta questo perche' il legame venga salvato.
         sala.setBibliotecario(bibliotecario);
 
-        creaAreeConPostazioni(sala, tipiArea, numPostazioniTotali);
+        creaAreeConPostazioni(sala, tipiArea, numPostazioni);
 
         gestoreDB.salva(sala);
 
@@ -97,12 +109,11 @@ public class GestioneSaleController {
     }
 
     /**
-     * Verifica i dati inseriti, nell'ordine dei casi di test.
-     *
-     * Il caso del numero di postazioni non numerico non arriva fin qui: viene
-     * intercettato dal Boundary quando converte il testo digitato.
+     * Verifica i dati inseriti, nell'ordine in cui il piano di test elenca le
+     * classi di equivalenza: nome, descrizione, numero di postazioni, orario,
+     * aree.
      */
-    private void verificaDatiValidi(String nome, String descrizione, int numPostazioniTotali,
+    private void verificaDatiValidi(String nome, String descrizione, String numPostazioniTotali,
                                     String orariApertura, List<String> tipiArea) {
 
         if (nome == null || nome.trim().isEmpty()) {
@@ -121,7 +132,9 @@ public class GestioneSaleController {
             throw new BusinessException("Errore, la descrizione inserita è troppo lunga!");
         }
 
-        if (numPostazioniTotali < 1) {
+        int numPostazioni = leggiNumeroPostazioni(numPostazioniTotali);
+
+        if (numPostazioni < 1) {
             throw new BusinessException("Errore, il numero di postazioni deve essere maggiore di zero!");
         }
 
@@ -136,10 +149,26 @@ public class GestioneSaleController {
 
             // Il modello di dominio vuole almeno una postazione per area, quindi
             // le postazioni non possono essere meno delle aree richieste.
-            if (!tipiArea.isEmpty() && numPostazioniTotali < tipiArea.size()) {
+            if (!tipiArea.isEmpty() && numPostazioni < tipiArea.size()) {
                 throw new BusinessException(
                         "Errore, le postazioni non bastano per il numero di aree indicate!");
             }
+        }
+    }
+
+    /**
+     * Converte in numero il valore digitato per le postazioni.
+     *
+     * Il diagramma delle classi non dichiara il tipo di questo parametro, a
+     * differenza degli altri: il valore arriva come lo ha scritto l'utente, e
+     * riconoscere che "quaranta" non e' un numero fa parte della validazione,
+     * quindi sta qui insieme agli altri controlli e non nel Boundary.
+     */
+    private int leggiNumeroPostazioni(String numPostazioniTotali) {
+        try {
+            return Integer.parseInt(numPostazioniTotali.trim());
+        } catch (NumberFormatException | NullPointerException e) {
+            throw new BusinessException("Errore, formato numero postazioni non valido!");
         }
     }
 
