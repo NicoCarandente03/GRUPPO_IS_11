@@ -5,12 +5,6 @@ import java.time.LocalDate;
 /**
  * Dati di una prenotazione nella forma che serve alle finestre.
  *
- * Il package DTO nasce dall'esigenza di mostrare sulla GUI collezioni di
- * elementi: se un controller restituisse un elenco di entity, la finestra
- * dovrebbe conoscere la struttura interna delle Entity per ricavare, ad esempio,
- * il nome della sala navigando postazione, area e sala. Sarebbe un accoppiamento
- * troppo alto fra i due livelli.
- *
  * I campi sono quelli che il piano di test si aspetta di vedere a video:
  * studente, sala, data, fascia oraria e stato.
  */
