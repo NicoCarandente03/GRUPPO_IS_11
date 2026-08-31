@@ -1,8 +1,14 @@
 package controller;
 
-import java.util.List;
-import java.util.Date;
+import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+import dto.PrenotazioneDTO;
+import eccezioni.BusinessException;
 
 import database.GestorePersistenza;
 
@@ -26,6 +32,38 @@ public class GestionePrenotazioneController {
     // Costruttore privato
     private GestionePrenotazioneController() {
         this.gestoreDB = new GestorePersistenza();
+        caricaConfigurazione();
+    }
+
+    /**
+     * Legge i limiti temporali da config.properties
+     */
+    private void caricaConfigurazione() {
+        this.limiteAnnullamentoMinuti = 60;
+        this.intervalloCheckInMinuti = 30;
+
+        Properties configurazione = new Properties();
+        try (InputStream in = getClass().getResourceAsStream("/config.properties")) {
+            if (in == null) {
+                return;
+            }
+            configurazione.load(in);
+            this.limiteAnnullamentoMinuti = Integer.parseInt(
+                    configurazione.getProperty("annullamento.limite.minuti", "60").trim());
+            this.intervalloCheckInMinuti = Integer.parseInt(
+                    configurazione.getProperty("checkin.intervallo.minuti", "30").trim());
+        } catch (Exception e) {
+            System.err.println("config.properties non leggibile, uso i valori predefiniti: "
+                    + e.getMessage());
+        }
+    }
+
+    public int getLimiteAnnullamentoMinuti() {
+        return limiteAnnullamentoMinuti;
+    }
+
+    public int getIntervalloCheckInMinuti() {
+        return intervalloCheckInMinuti;
     }
 
     public static GestionePrenotazioneController getInstance() {
@@ -93,5 +131,101 @@ public class GestionePrenotazioneController {
         }
 
         return esitoCreazione;
+    }
+
+    /**
+     * Elenco delle prenotazioni di uno studente, nella forma che serve alla
+     * finestra del profilo.
+     */
+    public List<PrenotazioneDTO> visualizzaPrenotazioniEffettuate(String matricola) {
+        List<PrenotazioneDTO> elenco = new ArrayList<>();
+
+        for (Prenotazione prenotazione : gestoreDB.trovaPrenotazioniPerStudente(matricola)) {
+            elenco.add(convertiInDTO(prenotazione));
+        }
+
+        return elenco;
+    }
+
+    /**
+     * Annulla una prenotazione e rende di nuovo disponibile la postazione.
+     *
+     * I controlli sono nell'ordine dei casi di test del piano funzionale, e ogni
+     * fallimento solleva una BusinessException con il messaggio previsto: un
+     * valore di ritorno booleano non basterebbe a distinguere cinque errori
+     * diversi. La firma resta void come nel diagramma delle classi.
+     *
+     * Il parametro con la matricola del richiedente non compare nel diagramma,
+     * ma serve al controllo di proprieta' richiesto dal caso di test 3: uno
+     * studente puo' annullare solo le proprie prenotazioni.
+     *
+     * E' un parametro temporaneo. Quando ci sara' il Log-in, la matricola verra'
+     * letta dalla sessione tenuta da AutenticazioneController e il metodo tornera'
+     * ad avere la firma del diagramma, con il solo idPrenotazione.
+     */
+    public void annullamentoPrenotazione(String idPrenotazione, String matricolaRichiedente) {
+        annullamentoPrenotazione(idPrenotazione, matricolaRichiedente, LocalDateTime.now());
+    }
+
+    /**
+     * Variante con l'istante di riferimento esplicito, usata dai test per non
+     * dipendere dall'orologio di sistema.
+     */
+    public void annullamentoPrenotazione(String idPrenotazione, String matricolaRichiedente,
+                                         LocalDateTime adesso) {
+
+        Prenotazione prenotazione = gestoreDB.trovaPrenotazionePerId(idPrenotazione);
+
+        if (prenotazione == null) {
+            throw new BusinessException("Errore, la prenotazione selezionata è inesistente!");
+        }
+
+        if (prenotazione.getStudente() == null
+                || !prenotazione.getStudente().getMatricola().equals(matricolaRichiedente)) {
+            throw new BusinessException("Errore, non sei autorizzato ad annullare questa prenotazione!");
+        }
+
+        if (Prenotazione.ANNULLATA.equals(prenotazione.getStato())) {
+            throw new BusinessException("Errore, la prenotazione risulta già annullata!");
+        }
+
+        if (Prenotazione.SCADUTA.equals(prenotazione.getStato())) {
+            throw new BusinessException("Errore, la prenotazione risulta scaduta!");
+        }
+
+        boolean annullata = prenotazione.annulla(limiteAnnullamentoMinuti, adesso);
+
+        if (!annullata) {
+            throw new BusinessException("Errore, il tempo limite per l'annullamento è stato superato!");
+        }
+
+        // la postazione e' gia' stata liberata dall'entity, qui si rende persistente
+        gestoreDB.aggiorna(prenotazione);
+        gestoreDB.aggiorna(prenotazione.getPostazione());
+
+        NotificaController.getInstance().notificaAnnullamento(prenotazione);
+    }
+
+    /**
+     * Traduce una prenotazione nel DTO che il Boundary sa mostrare, risalendo
+     * ad area e sala dalla postazione prenotata.
+     */
+    private PrenotazioneDTO convertiInDTO(Prenotazione prenotazione) {
+        String nomeSala = prenotazione.getSala() == null
+                ? "" : prenotazione.getSala().getNome();
+        String tipoArea = prenotazione.getArea() == null
+                ? "" : prenotazione.getArea().getTipo();
+        String idPostazione = prenotazione.getPostazione() == null
+                ? "" : prenotazione.getPostazione().getIdPostazione();
+
+        return new PrenotazioneDTO(
+                prenotazione.getIdPrenotazione(),
+                prenotazione.getStudente().getMatricola(),
+                nomeSala,
+                tipoArea,
+                idPostazione,
+                prenotazione.getData(),
+                prenotazione.getFasciaOraria(),
+                prenotazione.getStato());
     }
 }

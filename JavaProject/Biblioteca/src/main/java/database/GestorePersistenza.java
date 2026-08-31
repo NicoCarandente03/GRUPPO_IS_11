@@ -68,6 +68,57 @@ public class GestorePersistenza {
         }
     }
 
+    //Metodi utilizzati in AnnullamentoPrenotazione
+
+    /**
+     * Cerca una prenotazione dalla sua chiave primaria.
+     *
+     * Restituisce null se non esiste: e' il caso di test in cui lo studente
+     * indica un identificativo inesistente.
+     */
+    public Prenotazione trovaPrenotazionePerId(String idPrenotazione) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
+        try {
+            return em.find(Prenotazione.class, idPrenotazione);
+        } catch (Exception e) {
+            System.err.println("Errore durante la ricerca della prenotazione: " + e.getMessage());
+            return null;
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Elenco delle prenotazioni di uno studente, dalla piu' recente.
+     */
+    public List<Prenotazione> trovaPrenotazioniPerStudente(String matricola) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+        List<Prenotazione> prenotazioni = new ArrayList<>();
+
+        try {
+            String jpql = "SELECT p FROM Prenotazione p "
+                    + "WHERE p.studente.matricola = :matricola "
+                    + "ORDER BY p.data DESC, p.fasciaOraria";
+
+            TypedQuery<Prenotazione> query = em.createQuery(jpql, Prenotazione.class);
+            query.setParameter("matricola", matricola);
+
+            prenotazioni = query.getResultList();
+
+        } catch (Exception e) {
+            System.err.println("Errore durante la ricerca delle prenotazioni: " + e.getMessage());
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+
+        return prenotazioni;
+    }
+
     public void aggiorna(Object entity) {
         EntityManager em = DBManager.getInstance().getEntityManager();
 
