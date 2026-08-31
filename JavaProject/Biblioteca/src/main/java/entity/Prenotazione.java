@@ -41,10 +41,6 @@ public class Prenotazione {
 
     private String stato;
 
-    //LI HA AGGIUNTI NICO, POI PARLAIMO, NON SO COME RISOLVERE
-    private Area area;
-    private SalaStudio sala;
-
     @ManyToOne
     @JoinColumn(name = "matricola")
     private Studente studente;
@@ -115,19 +111,12 @@ public class Prenotazione {
     public Area getArea() {
         return postazione == null ? null : postazione.getArea();
     }
-    public void setArea(Area area) {
-        this.area = area;
-    }
 
     /** Sala della postazione prenotata, risalita per navigazione. */
     public SalaStudio getSala() {
         Area areaPrenotata = getArea();
         return areaPrenotata == null ? null : areaPrenotata.getSalaStudio();
     }
-    public void setSala(SalaStudio sala) {
-        this.sala = sala;
-    }
-
 
 
     /**

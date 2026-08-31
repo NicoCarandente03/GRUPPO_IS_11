@@ -8,15 +8,22 @@ import entity.Prenotazione;
 import entity.SalaStudio;
 import entity.Studente;
 import entity.Postazione;
+import entity.Area;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 public class GestorePersistenza {
 
+    //
+    // --- METODI CRUD BASE ---
+    //
+
     public void salva(Object entity) {
-        EntityManager em = JpaUtil.getInstance().getEntityManager();
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
         try {
             em.getTransaction().begin();
             em.persist(entity);
@@ -26,14 +33,18 @@ public class GestorePersistenza {
                 em.getTransaction().rollback();
             }
             e.printStackTrace();
+
             throw new RuntimeException("Errore durante il salvataggio nel database.");
         } finally {
-            em.close();
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 
     public void aggiorna(Object entity) {
-        EntityManager em = JpaUtil.getInstance().getEntityManager();
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
         try {
             em.getTransaction().begin();
             em.merge(entity);
@@ -43,14 +54,18 @@ public class GestorePersistenza {
                 em.getTransaction().rollback();
             }
             e.printStackTrace();
+
             throw new RuntimeException("Errore durante l'aggiornamento nel database.");
         } finally {
-            em.close();
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 
     public void rimuovi(Object entity) {
-        EntityManager em = JpaUtil.getInstance().getEntityManager();
+        EntityManager em = DBManager.getInstance().getEntityManager();
+
         try {
             em.getTransaction().begin();
             Object managedEntity = em.merge(entity);
@@ -61,109 +76,157 @@ public class GestorePersistenza {
                 em.getTransaction().rollback();
             }
             e.printStackTrace();
+
             throw new RuntimeException("Errore durante l'eliminazione nel database.");
         } finally {
-            em.close();
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 
+    //
+    // --- METODI PER I CASI D'USO DI PRENOTAZIONE ---
+    //
 
-    // Metodo utilizzato in ConsultazioneDisponibilitaSaleStudio
-    public List<SalaStudio> trovaTutteLeSaleDisponibili(Date data, String fasciaOraria) {
-
-        // Si ottiene l'EntityManager dal Singleton DBManager per interagire con il contesto di persistenza
+    //Interroga il database per recuperare l'elenco completo di tutte le sale studio fisicamente presenti.
+    public List<SalaStudio> trovaTutteLeSaleDisponibili(LocalDate data, String fasciaOraria) {
+        // Si richiede l'EntityManager al Singleton per interagire con Hibernate
         EntityManager em = DBManager.getInstance().getEntityManager();
         List<SalaStudio> listaSale = null;
 
         try {
-            // Utilizzo di JPQL (Java Persistence Query Language) per interrogare il modello a oggetti
+            // Formulazione della query in JPQL (Java Persistence Query Language)
             String jpql = "SELECT s FROM SalaStudio s";
 
-            // Creazione di una query tipizzata per garantire la type-safety ed evitare cast espliciti
+            // Creazione di una TypedQuery. Passare la classe SalaStudio.class come secondo parametro
+            // garantisce la type-safety a tempo di compilazione, evitando cast espliciti successivi.
             TypedQuery<SalaStudio> query = em.createQuery(jpql, SalaStudio.class);
-
             listaSale = query.getResultList();
 
         } catch (Exception e) {
-            System.err.println("Errore durante l'esecuzione della query JPQL in trovaTutteLeSaleDisponibili: " + e.getMessage());
+            System.err.println("Errore in trovaTutteLeSaleDisponibili: " + e.getMessage());
         } finally {
-            // Chiusura sicura dell'EntityManager per garantire il rilascio delle risorse ed evitare memory leak
+            // Garantisce che la connessione al database venga sempre rilasciata prevenendo il Memory Leak
             if (em != null && em.isOpen()) {
                 em.close();
             }
         }
-
         return listaSale;
     }
 
-    //Metodo utilizzato in VisualizzazioneFasceOrarieDisponibili
-    public List<String> trovaFasceOrarieDisponibili(String idSala, Date data) {
-
+    // Calcola dinamicamente le fasce orarie in cui la sala specificata dispone ancora di postazioni libere,
+    // sottraendo le fasce "sold-out" dall'elenco totale delle fasce ammesse
+    public List<String> trovaFasceOrarieDisponibili(String idSala, LocalDate data) {
         EntityManager em = DBManager.getInstance().getEntityManager();
-        List<String> fasceDisponibili = new ArrayList<>(entity.FasceOrarie.getElenco());
+
+        // Inizializzo la lista con TUTTE le fasce orarie possibili previste dal sistema,
+        // per poi procedere per sottrazione eliminando quelle esaurite.
+        List<String> fasceDisponibili = new ArrayList<>(FasceOrarie.getElenco());
 
         try {
-            // Query JPQL per trovare le fasce "sold-out" (dove prenotazioni >= posti totali)
-            String jpql = "SELECT p.fasciaOraria " + "FROM Prenotazione p " +
-                    "WHERE p.sala.id = :idSala AND p.data = :data " + "GROUP BY p.fasciaOraria " +
-                    "HAVING COUNT(p.id) >= (SELECT s.numeroPostazioni FROM SalaStudio s WHERE s.id = :idSala)";
+            // Navigazione delle relazioni per evitare ridondanze nell'Entity Prenotazione
+            // Poiché l'Entity Prenotazione non ha un riferimento diretto alla Sala, bisogna navigare
+            // la catena di relazioni: Prenotazione -> Postazione -> Area -> SalaStudio
+            String jpql = "SELECT p.fasciaOraria " +
+                    "FROM Prenotazione p " +
+                    "WHERE p.postazione.area.salaStudio.id = :idSala AND p.data = :data " +
+                    "GROUP BY p.fasciaOraria " +
+                    "HAVING COUNT(p.idPrenotazione) >= (SELECT s.numeroPostazioni FROM SalaStudio s WHERE s.id = :idSala)";
 
             TypedQuery<String> query = em.createQuery(jpql, String.class);
+            // Binding dei parametri
             query.setParameter("idSala", idSala);
             query.setParameter("data", data);
 
-            // Ottengo ora la lista delle fasce orarie in cui non ci sono più posti
             List<String> fasceEsaurite = query.getResultList();
-            // Rimuovo dalla lista completa quelle esaurite
+            // Rimozione logica delle fasce piene dall'elenco delle fasce totali iniziali
             fasceDisponibili.removeAll(fasceEsaurite);
 
         } catch (Exception e) {
-            System.err.println("Errore durante la verifica delle fasce orarie: " + e.getMessage());
+            System.err.println("Errore in trovaFasceOrarieDisponibili: " + e.getMessage());
         } finally {
             if (em != null && em.isOpen()) {
                 em.close();
             }
         }
-
         return fasceDisponibili;
     }
 
-    //Metodi utilizzati in EffettuaPrenotazione
+    // Ricerca di uno Studente all'interno del database tramite la sua matricola (chiave primaria)
     public Studente trovaPerMatricola(String matricola) {
-
         EntityManager em = DBManager.getInstance().getEntityManager();
         Studente studente = null;
-
         try {
-            // con il metodo find cerco direttamente per chiave primaria (ID)
+            // Utilizzo il metodo em.find() per la ricerca dell'entità tramite la Primary Key
             studente = em.find(Studente.class, matricola);
         } catch (Exception e) {
-            System.err.println("Errore nel recupero dello studente: " + e.getMessage());
+            System.err.println("Errore in trovaPerMatricola: " + e.getMessage());
         } finally {
             if (em != null && em.isOpen()) {
                 em.close();
             }
         }
-
         return studente;
     }
 
+    // Ricerca di una singola Postazione tramite il suo: "idPostazione" (chiave primaria)
     public Postazione trovaPostazionePerId(String idPostazione) {
-
         EntityManager em = DBManager.getInstance().getEntityManager();
         Postazione postazione = null;
-
         try {
-            // con il metodo find cerco direttamente per chiave primaria (ID)
             postazione = em.find(Postazione.class, idPostazione);
         } catch (Exception e) {
-            System.err.println("Errore nel recupero della postazione: " + e.getMessage());
+            System.err.println("Errore in trovaPostazionePerId: " + e.getMessage());
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+        return postazione;
+    }
+
+    // Trova tutte le postazioni attualmente libere e agibili in una specifica sala,
+    // per una determinata data e fascia oraria
+    public List<Postazione> trovaPostazioniLibere(String idSala, LocalDate data, String fasciaOraria) {
+        EntityManager em = DBManager.getInstance().getEntityManager();
+        List<Postazione> postazioniLibere = new ArrayList<>();
+
+        try {
+            // JPQL: Seleziono la postazione "p" a condizione che:
+            // 1. Appartenga alla sala richiesta
+            // 2. Sia agibile
+            // 3. Non esiste una prenotazione attiva o confermata per la stessa postazione, data e ora.
+            String jpql = "SELECT p FROM Postazione p " +
+                    "WHERE p.area.salaStudio.id = :idSala " +
+                    "AND p.isDisponibile = true " +
+                    "AND NOT EXISTS (" +
+                    "    SELECT 1 FROM Prenotazione pre " +
+                    "    WHERE pre.postazione = p " +
+                    "    AND pre.data = :data " +
+                    "    AND pre.fasciaOraria = :fasciaOraria " +
+                    "    AND pre.stato IN (:statoAttiva, :statoConfermata)" +
+                    ")";
+
+            TypedQuery<Postazione> query = em.createQuery(jpql, Postazione.class);
+
+            // Inserimento sicuro dei parametri
+            query.setParameter("idSala", idSala);
+            query.setParameter("data", data);
+            query.setParameter("fasciaOraria", fasciaOraria);
+            query.setParameter("statoAttiva", Prenotazione.ATTIVA);
+            query.setParameter("statoConfermata", Prenotazione.CONFERMATA);
+
+            postazioniLibere = query.getResultList();
+
+        } catch (Exception e) {
+            System.err.println("Errore in trovaPostazioniLibere: " + e.getMessage());
         } finally {
             if (em != null && em.isOpen()) {
                 em.close();
             }
         }
 
-        return postazione;
+        return postazioniLibere;
     }
 }

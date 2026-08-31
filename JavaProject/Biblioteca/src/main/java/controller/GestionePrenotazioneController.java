@@ -5,10 +5,10 @@ import java.util.Date;
 import java.time.LocalDate;
 
 import database.GestorePersistenza;
+
 import entity.Studente;
 import entity.Prenotazione;
 import entity.SalaStudio;
-import entity.Area;
 import entity.Postazione;
 
 import external.ServizioDiNotifiche;
@@ -35,42 +35,51 @@ public class GestionePrenotazioneController {
         return instance;
     }
 
-    public List<SalaStudio> consultazioneDisponibilitaSaleStudio(Date data, String fasciaOraria) {
+
+
+    public List<SalaStudio> consultazioneDisponibilitaSaleStudio(LocalDate data, String fasciaOraria) {
         // Il controller demanda la logica al package database e restituisce il risultato
         return gestoreDB.trovaTutteLeSaleDisponibili(data, fasciaOraria);
     }
 
-    public List<String> visualizzazioneFasceOrarieDisponibili(String idSala, Date data) {
+    public List<String> visualizzazioneFasceOrarieDisponibili(String idSala, LocalDate data) {
         // Delega totale della logica di estrazione al database
         return gestoreDB.trovaFasceOrarieDisponibili(idSala, data);
     }
 
     public boolean effettuaPrenotazione(String matricola, LocalDate data, String idSala, String fasciaOraria, String idArea, String idPostazione) {
-
         boolean esitoCreazione = true;
         Prenotazione nuovaPrenotazione = new Prenotazione();
 
         try {
-            // recupero dello studente dal database
             Studente studente = gestoreDB.trovaPerMatricola(matricola);
 
-            // NOTA: utilizzo UUID per creare una stringa alfanumerica casuale e sicura
+            // Creazione UUID univoco per il database
             String idUnivoco = java.util.UUID.randomUUID().toString();
             nuovaPrenotazione.setIdPrenotazione(idUnivoco);
 
-            // popolamento dei dati base della prenotazione
             nuovaPrenotazione.setStudente(studente);
             nuovaPrenotazione.setData(data);
             nuovaPrenotazione.setFasciaOraria(fasciaOraria);
 
+            // Set dello stato a partire dalla costante di classe
             nuovaPrenotazione.setStato(Prenotazione.ATTIVA);
 
-            // popolamento della postazione (solo se è stata effettivamente selezionata)
+            // Assegnazione della postazione specifica (se prevista)
             if (idPostazione != null && !idPostazione.isEmpty()) {
                 Postazione postazione = gestoreDB.trovaPostazionePerId(idPostazione);
                 nuovaPrenotazione.setPostazione(postazione);
+            } else {
+                // Se l'utente ha scelto solo la Sala, assegno in automatico la prima postazione libera trovata
+                List<Postazione> postazioniLibere = gestoreDB.trovaPostazioniLibere(idSala, data, fasciaOraria);
+                if (postazioniLibere != null && !postazioniLibere.isEmpty()) {
+                    nuovaPrenotazione.setPostazione(postazioniLibere.get(0));
+                } else {
+                    throw new Exception("Nessuna postazione libera in questa sala per l'orario scelto.");
+                }
             }
 
+            // Delegazione del salvataggio al DB
             gestoreDB.salva(nuovaPrenotazione);
 
         } catch (Exception e) {
@@ -78,7 +87,7 @@ public class GestionePrenotazioneController {
             System.err.println("Errore nel salvataggio della prenotazione: " + e.getMessage());
         }
 
-        // invio finale della notifica solo se il salvataggio è andato a buon fine
+        // Se tutto va a buon fine, inviamo la notifica tramite l'attore esterno
         if (esitoCreazione) {
             ServizioDiNotifiche.inviaNotificaConferma(matricola, nuovaPrenotazione);
         }
