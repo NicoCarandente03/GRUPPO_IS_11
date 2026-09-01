@@ -109,6 +109,23 @@ class PrenotazioneTest {
     }
 
     @Test
+    @DisplayName("il check-in risulta scaduto oltre l'intervallo di tolleranza")
+    void checkinScadutoOltreTolleranza() {
+        //la fascia oraria inizia alle 14. Con tolleranza 30 min, chiude alle 14:30
+        LocalDateTime orarioRitardo = LocalDateTime.of(2026, 9, 7 ,14, 35);
+
+        assertTrue(prenotazione.isCheckinScaduto(INTERVALLO_CHECKIN, orarioRitardo), "A 35 min dall'inizio, il tempo limite deve risultare superato");
+    }
+
+    @Test
+    @DisplayName("il check-in non è scaduto se lo studente è in anticipo o in orario")
+    void checkinNonScadutoInAnticipo() {
+        LocalDateTime orarioAnticipo = LocalDateTime.of(2026, 9, 7, 13, 0);
+
+        assertFalse(prenotazione.isCheckinScaduto(INTERVALLO_CHECKIN, orarioAnticipo), "Se si è in anticipo, il check-in è invalido ma non scaduto");
+    }
+
+    @Test
     @DisplayName("far scadere libera la postazione")
     void scadereLiberaLaPostazione() {
         postazione.setDisponibile(false);

@@ -30,8 +30,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Suite funzionale Annullamento Prenotazione: i sei casi del piano di test, uno
- * per uno, con gli stessi identificativi.
+ * Suite funzionale che copre i casi di test per:
+ * - Annullamento Prenotazione: i sei casi del piano di test, uno per uno, con gli stessi identificativi
+ * - Effettua Prenotazione
+ * - Check-in
  *
  * I controlli che il piano non prevede stanno in ControlliAggiuntiviTest.
  *
@@ -48,10 +50,16 @@ class GestionePrenotazioneControllerTest {
     private static final String FASCIA = "14:00-16:00";
 
     // la fascia inizia alle 14:00, quindi cinque ore prima e' entro il limite
-    private static final LocalDateTime IN_TEMPO = LocalDateTime.of(2026, 9, 7, 9, 0);
-
+    private static final LocalDateTime IN_TEMPO_ANNULLAMENTO = LocalDateTime.of(2026, 9, 7, 9, 0);
     // trenta minuti prima: il limite di annullamento e' sessanta
-    private static final LocalDateTime TROPPO_TARDI = LocalDateTime.of(2026, 9, 7, 13, 30);
+    private static final LocalDateTime TROPPO_TARDI_ANNULLAMENTO = LocalDateTime.of(2026, 9, 7, 13, 30);
+
+    //2 ore prima (limite 30 min)
+    private static final LocalDateTime TROPPO_PRESTO_CHECKIN = LocalDateTime.of(2026, 9, 7, 12, 0);
+    //10 min prima dell'inizio
+    private static final LocalDateTime IN_ORARIO_CHECKIN = LocalDateTime.of(2026, 9, 7, 13, 50);
+    //45 min dopo l'inizio
+    private static final LocalDateTime TROPPO_TARDI_CHECKIN = LocalDateTime.of(2026, 9, 7, 14, 45);
 
     private GestorePersistenza gestoreDB;
     private GestionePrenotazioneController controller;
@@ -89,7 +97,7 @@ class GestionePrenotazioneControllerTest {
         Prenotazione prenotazione = creaPrenotazione("P001", titolare);
         when(gestoreDB.trovaPrenotazionePerId("P001")).thenReturn(prenotazione);
 
-        controller.annullamentoPrenotazione("P001", "N46001234", IN_TEMPO);
+        controller.annullamentoPrenotazione("P001", "N46001234", IN_TEMPO_ANNULLAMENTO);
 
         assertEquals(Prenotazione.ANNULLATA, prenotazione.getStato());
         assertTrue(prenotazione.getPostazione().isDisponibile(),
@@ -105,7 +113,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P999")).thenReturn(null);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P999", "N46001234", IN_TEMPO));
+                () -> controller.annullamentoPrenotazione("P999", "N46001234", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, la prenotazione selezionata è inesistente!", errore.getMessage());
         verify(gestoreDB, never()).aggiorna(any());
@@ -118,7 +126,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P001")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P001", "N46004321", IN_TEMPO));
+                () -> controller.annullamentoPrenotazione("P001", "N46004321", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, non sei autorizzato ad annullare questa prenotazione!",
                 errore.getMessage());
@@ -134,7 +142,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P002")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P002", "N46001234", IN_TEMPO));
+                () -> controller.annullamentoPrenotazione("P002", "N46001234", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, la prenotazione risulta già annullata!", errore.getMessage());
         verify(gestoreDB, never()).aggiorna(any());
@@ -148,7 +156,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P003")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P003", "N46001234", IN_TEMPO));
+                () -> controller.annullamentoPrenotazione("P003", "N46001234", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, la prenotazione risulta scaduta!", errore.getMessage());
     }
@@ -160,7 +168,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P004")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P004", "N46001234", TROPPO_TARDI));
+                () -> controller.annullamentoPrenotazione("P004", "N46001234", TROPPO_TARDI_ANNULLAMENTO));
 
         assertEquals("Errore, il tempo limite per l'annullamento è stato superato!",
                 errore.getMessage());
@@ -218,4 +226,45 @@ class GestionePrenotazioneControllerTest {
         // Verifichiamo che in caso di errore, il metodo salva() NON venga mai chiamato
         verify(gestoreDB, never()).salva(any(Prenotazione.class));
     }
+
+    // TEST CHECK-IN
+
+    @Test
+    @DisplayName("TC10 check-in valido confermato")
+    void checkinValido() {
+        Prenotazione prenotazione = creaPrenotazione("PR01", titolare);
+        when(gestoreDB.trovaPrenotazionePerId("PR01")).thenReturn(prenotazione);
+
+        // Simuliamo l'esecuzione assumendo che LocalDateTime.now() restituisca IN_ORARIO_CHECKIN.
+
+        assertTrue(prenotazione.checkin(30, IN_ORARIO_CHECKIN));
+        assertEquals(Prenotazione.CONFERMATA, prenotazione.getStato());
+    }
+
+    @Test
+    @DisplayName("TC11 check-in rifiutato (Troppo presto)")
+    void checkinTroppoPresto() {
+        Prenotazione prenotazione = creaPrenotazione("PR01", titolare);
+        when(gestoreDB.trovaPrenotazionePerId("PR01")).thenReturn(prenotazione);
+
+        assertFalse(prenotazione.isCheckinValido(30, TROPPO_PRESTO_CHECKIN));
+        assertFalse(prenotazione.isCheckinScaduto(30, TROPPO_PRESTO_CHECKIN));
+    }
+
+    @Test
+    @DisplayName("TC12 check-in rifiutato e posto liberato (Ritardo superato)")
+    void checkinRitardoSuperato() {
+        Prenotazione prenotazione = creaPrenotazione("PR01", titolare);
+        prenotazione.getPostazione().setDisponibile(false); //postazione occupata
+        when(gestoreDB.trovaPrenotazionePerId("PR01")).thenReturn(prenotazione);
+
+        assertFalse(prenotazione.isCheckinValido(30, TROPPO_TARDI_CHECKIN));
+        assertTrue(prenotazione.isCheckinScaduto(30, TROPPO_TARDI_CHECKIN));
+
+        prenotazione.scadi();
+
+        assertEquals(Prenotazione.SCADUTA, prenotazione.getStato());
+        assertTrue(prenotazione.getPostazione().isDisponibile(), "La postazione deve essere liberata");
+    }
+
 }
