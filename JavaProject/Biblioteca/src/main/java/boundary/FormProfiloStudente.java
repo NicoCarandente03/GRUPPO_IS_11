@@ -22,7 +22,8 @@ import java.util.List;
 
 /**
  * Finestra del profilo studente: mostra le prenotazioni dello studente che ha
- * effettuato l'accesso e permette di annullare quella selezionata.
+ * effettuato l'accesso e permette di annullare quella selezionata o
+ * confermare la sua presenza.
  */
 public class FormProfiloStudente implements BoundaryProfiloStudente {
 
@@ -47,6 +48,7 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
     private JPanel pannelloPrincipale;
     private JButton bottoneAggiorna;
     private JButton bottoneAnnulla;
+    private JButton bottoneCheckin;
     private JTable tabellaPrenotazioni;
     private JLabel etichettaEsito;
 
@@ -69,12 +71,20 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
             }
         });
 
+        bottoneCheckin.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                checkin();
+            }
+        });
+
         visualizzaPrenotazioniEffettuate();
     }
 
     private void costruisciInterfaccia() {
         bottoneAggiorna = new JButton("Aggiorna elenco");
         bottoneAnnulla = new JButton("Annulla prenotazione selezionata");
+        bottoneCheckin = new JButton("Conferma presenza");
         etichettaEsito = new JLabel(" ");
 
         tabellaPrenotazioni = new JTable(new DefaultTableModel(COLONNE, 0));
@@ -84,8 +94,12 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
         alto.add(new JLabel("Prenotazioni dello studente " + matricolaStudente));
         alto.add(bottoneAggiorna);
 
+        JPanel pannelloBottoni = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        pannelloBottoni.add(bottoneAnnulla);
+        pannelloBottoni.add(bottoneCheckin);
+
         JPanel basso = new JPanel(new BorderLayout(8, 4));
-        basso.add(bottoneAnnulla, BorderLayout.WEST);
+        basso.add(pannelloBottoni, BorderLayout.WEST);
         basso.add(etichettaEsito, BorderLayout.CENTER);
 
         pannelloPrincipale = new JPanel(new BorderLayout(8, 8));
@@ -152,11 +166,27 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
         visualizzaPrenotazioniEffettuate();
     }
 
-    // DA COMPLETARE 
-
     @Override
     public void checkin() {
-        mostraMessaggio("Funzionalita' non ancora disponibile.");
+        int riga = tabellaPrenotazioni.getSelectedRow();
+
+        if (riga < 0) {
+            mostraErrore("Seleziona la prenotazione per cui effettuare il check-in.");
+            return;
+        }
+
+        String idPrenotazione = String.valueOf(tabellaPrenotazioni.getValueAt(riga, 0));
+
+        try {
+            controller.checkin(idPrenotazione);
+            mostraMessaggio("Check-in completato con successo. Presenza confermata");
+        } catch (BusinessException e) {
+            mostraErrore(e.getMessage());
+        } catch (RuntimeException e) {
+            mostraErrore(TESTO_ERRORE_TECNICO);
+        }
+
+        visualizzaPrenotazioniEffettuate();
     }
 
     @Override
