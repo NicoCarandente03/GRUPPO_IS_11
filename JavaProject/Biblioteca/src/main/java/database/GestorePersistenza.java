@@ -24,64 +24,20 @@ public class GestorePersistenza {
     //
 
     public void salva(Object entity) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            em.getTransaction().begin();
-            em.persist(entity);
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-
-            throw new RuntimeException("Errore durante il salvataggio nel database.");
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public void salva(Object entity) {
         DBManager.getInstance().eseguiInTransazione(em -> em.persist(entity)); //sintassi a freccia per passare un'azione come parametro
-    }*/
+    }
 
 
     /**
      * Salva piu' oggetti nella stessa transazione.
      */
     public void salvaTutti(Object... entita) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            em.getTransaction().begin();
-            for (Object entita_i : entita) {
-                em.persist(entita_i);
-            }
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-
-            throw new RuntimeException("Errore durante il salvataggio multiplo nel database.");
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public void salvaTutti(Object... entita) {
         DBManager.getInstance().eseguiInTransazione(em -> {
             for(Object e: entita) {
                 em.persist(e);
             }
         });
-    }*/
+    }
 
 
     //Metodi utilizzati in Registrazione
@@ -104,59 +60,19 @@ public class GestorePersistenza {
      * indica un identificativo inesistente.
      */
     public Prenotazione trovaPrenotazionePerId(String idPrenotazione) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            return em.find(Prenotazione.class, idPrenotazione);
-        } catch (Exception e) {
-            System.err.println("Errore durante la ricerca della prenotazione: " + e.getMessage());
-            return null;
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public Prenotazione trovaPrenotazionePerId(String idPrenotazione) {
         return DBManager.getInstance().esegui(em -> em.find(Prenotazione.class, idPrenotazione));
-    }*/
+    }
 
 
     /**
      * Elenco delle prenotazioni di uno studente, dalla piu' recente.
      */
     public List<Prenotazione> trovaPrenotazioniPerStudente(String matricola) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-        List<Prenotazione> prenotazioni = new ArrayList<>();
-
-        try {
-            String jpql = "SELECT p FROM Prenotazione p "
-                    + "WHERE p.studente.matricola = :matricola "
-                    + "ORDER BY p.data DESC, p.fasciaOraria";
-
-            TypedQuery<Prenotazione> query = em.createQuery(jpql, Prenotazione.class);
-            query.setParameter("matricola", matricola);
-
-            prenotazioni = query.getResultList();
-
-        } catch (Exception e) {
-            System.err.println("Errore durante la ricerca delle prenotazioni: " + e.getMessage());
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-
-        return prenotazioni;
-    }
-    //può essere fatto così?
-    /*public List<Prenotazione> trovaPrenotazioniPerStudente(String matricola) {
         return DBManager.getInstance().esegui(em -> {
             String jpql="SELECT p FROM Prenotazione p WHERE p.studente.matricola = :matricola ORDER BY p.data DESC, p.fasciaOraria";
             return em.createQuery(jpql, Prenotazione.class).setParameter("matricola", matricola).getResultList();
         });
-    }*/
+    }
 
 
     //Metodi utilizzati in CreazioneAulaStudio
@@ -168,27 +84,6 @@ public class GestorePersistenza {
      * due sale con lo stesso nome.
      */
     public SalaStudio trovaSalaPerNome(String nome) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            String jpql = "SELECT s FROM SalaStudio s WHERE s.nome = :nome";
-            TypedQuery<SalaStudio> query = em.createQuery(jpql, SalaStudio.class);
-            query.setParameter("nome", nome);
-
-            List<SalaStudio> risultati = query.getResultList();
-            return risultati.isEmpty() ? null : risultati.get(0);
-
-        } catch (Exception e) {
-            System.err.println("Errore durante la ricerca della sala per nome: " + e.getMessage());
-            return null;
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public SalaStudio trovaSalaPerNome(String nome) {
         return DBManager.getInstance().esegui(em -> {
             try{
                 return em.createQuery("SELECT s FROM SalaStudio s WHERE s.nome = :nome", SalaStudio.class).setParameter("nome", nome).getSingleResult();
@@ -196,30 +91,15 @@ public class GestorePersistenza {
             return null;
             }
         });
-    }*/
+    }
 
 
     /**
      * Cerca un bibliotecario dalla sua chiave primaria.
      */
     public Bibliotecario trovaPerCodiceIdentificativo(String codiceIdentificativo) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            return em.find(Bibliotecario.class, codiceIdentificativo);
-        } catch (Exception e) {
-            System.err.println("Errore durante la ricerca del bibliotecario: " + e.getMessage());
-            return null;
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public Bibliotecario trovaPerCodiceIdentificativo(String codiceIdentificativo) {
         return DBManager.getInstance().esegui(em -> em.find(Bibliotecario.class, codiceIdentificativo));
-    }*/
+    }
 
 
     //Metodo utilizzato in ConsultazioneStoricoPrenotazioni
@@ -236,56 +116,11 @@ public class GestorePersistenza {
      * diretto alla sala.
      */
     public List<Prenotazione> trovaPrenotazioniStoriche(String nomeSala, String matricolaStudente) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-        List<Prenotazione> risultati = new ArrayList<>();
-
-        boolean filtraPerSala = nomeSala != null && !nomeSala.trim().isEmpty();
-        boolean filtraPerStudente = matricolaStudente != null && !matricolaStudente.trim().isEmpty();
-
-        try {
-            StringBuilder jpql = new StringBuilder("SELECT p FROM Prenotazione p");
-            String congiunzione = " WHERE ";
-
-            if (filtraPerSala) {
-                jpql.append(congiunzione).append("p.postazione.area.sala.nome = :nomeSala");
-                congiunzione = " AND ";
-            }
-            if (filtraPerStudente) {
-                jpql.append(congiunzione).append("p.studente.matricola = :matricola");
-            }
-
-            jpql.append(" ORDER BY p.data DESC, p.fasciaOraria");
-
-            TypedQuery<Prenotazione> query = em.createQuery(jpql.toString(), Prenotazione.class);
-            if (filtraPerSala) {
-                query.setParameter("nomeSala", nomeSala.trim());
-            }
-            if (filtraPerStudente) {
-                query.setParameter("matricola", matricolaStudente.trim());
-            }
-
-            risultati = query.getResultList();
-
-        } catch (Exception e) {
-            System.err.println("Errore durante la ricerca dello storico: " + e.getMessage());
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-
-        return risultati;
-    }
-    //può essere così?
-    /*public List<Prenotazione> trovaPrenotazioniStoriche(String nomeSala, String matricolaStudente) {
         return DBManager.getInstance().esegui(em -> {
-
             boolean filtraPerSala = nomeSala != null && !nomeSala.trim().isEmpty();
             boolean filtraPerStudente = matricolaStudente != null && !matricolaStudente.trim().isEmpty();
-
             StringBuilder jpql = new StringBuilder("SELECT p FROM Prenotazione p");
             String congiunzione = " WHERE ";
-
             if (filtraPerSala) {
                 jpql.append(congiunzione).append("p.postazione.area.sala.nome = :nomeSala");
                 congiunzione = " AND ";
@@ -293,11 +128,8 @@ public class GestorePersistenza {
             if (filtraPerStudente) {
                 jpql.append(congiunzione).append("p.studente.matricola = :matricola");
             }
-
             jpql.append(" ORDER BY p.data DESC, p.fasciaOraria");
-
             TypedQuery<Prenotazione> query = em.createQuery(jpql.toString(), Prenotazione.class);
-
             // Binding dinamico dei parametri solo se la stringa è stata effettivamente accodata
             if (filtraPerSala) {
                 query.setParameter("nomeSala", nomeSala.trim());
@@ -305,10 +137,9 @@ public class GestorePersistenza {
             if (filtraPerStudente) {
                 query.setParameter("matricola", matricolaStudente.trim());
             }
-
             return query.getResultList();
         });
-    }*/
+    }
 
 
     /**
