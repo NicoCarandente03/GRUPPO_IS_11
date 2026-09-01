@@ -8,4 +8,6 @@ package boundary;
 public interface BoundaryAutenticazione {
 
     void registrazione();
+
+    void login();
 }

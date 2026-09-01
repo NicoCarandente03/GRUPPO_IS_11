@@ -13,6 +13,9 @@ public class AutenticazioneController {
     //Espressione per validare matematicamente il formato dell'email
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
 
+    //Variabile per mantenere in memoria l'utente loggato
+    private Utente utenteLoggato;
+
     // 1. Pattern Singleton richiesto dal diagramma UML
     private static AutenticazioneController instance;
 
@@ -99,5 +102,42 @@ public class AutenticazioneController {
     //Controllo duplicati codiceIdentificativo
     private boolean verificaCodiceIdentificativo(String codiceIdentificativo) {
         return gestoreDB.trovaPerCodiceIdentificativo(codiceIdentificativo) == null;
+    }
+
+    /**
+     * Effettua l'accesso al sistema di un utente precedentemente registrato
+     */
+    public Utente login(String email, String password) {
+
+        //Delega il controllo dei dati validi
+        verificaDatiValidi(email, password);
+
+        //Interrogazione del DB per cercare l'utente
+        Utente utenteTrovato = gestoreDB.trovaUtentePerEmail(email);
+
+        //Delega la verifica delle credenziali direttamente alla classe
+        // Utente, che possiede il dato (password) ed è l'esperta che deve
+        //esporre il metodo per verificarlo
+        if (utenteTrovato == null || !utenteTrovato.verificaCorrispondenzaCredenziali(password)) {
+            throw new BusinessException("Utente non trovato o credenziali non corrette"); //eccezione generica per sicurezza
+        }
+
+        //Creazione della sessione
+        this.utenteLoggato = utenteTrovato;
+        return utenteLoggato;
+    }
+
+    /**
+     * Verifica i dati inseriti, nell'ordine in cui il piano di test elenca le
+     * classi di equivalenza: email, password
+     */
+    private void verificaDatiValidi(String email, String password) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new BusinessException("Errore, l'email non può essere vuota!");
+        }
+
+        if (password == null || password.trim().isEmpty()) {
+            throw new BusinessException("Errore, la password non può essere vuota!");
+        }
     }
 }

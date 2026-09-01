@@ -57,10 +57,8 @@ public abstract class Utente {
     /**
      * Confronta la password ricevuta con quella dell'utente.
      *
-     * Nel diagramma il metodo e' dichiarato void, ma il sequence del Log-in
-     * mostra che restituisce un esito booleano.
      */
-    public boolean verificaPassword(String password) {
+    public boolean verificaCorrispondenzaCredenziali(String password) {
         return this.password != null && this.password.equals(password);
     }
 

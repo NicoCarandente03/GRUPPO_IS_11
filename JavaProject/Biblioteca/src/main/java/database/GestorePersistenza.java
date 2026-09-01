@@ -11,6 +11,7 @@ import entity.Studente;
 import entity.Postazione;
 import entity.Area;
 import entity.Bibliotecario;
+import entity.Utente;
 
 import java.util.ArrayList;
 import java.time.LocalDate;
