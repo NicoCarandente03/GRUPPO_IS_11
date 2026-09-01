@@ -35,6 +35,15 @@ public class AutenticazioneController {
     }
 
     /**
+     * Costruttore usato dai test, che passano un finto GestorePersistenza al
+     * posto di quello reale. Non e' pubblico proprio per non essere usato
+     * altrove: l'applicazione passa sempre da getInstance().
+     */
+    AutenticazioneController(GestorePersistenza gestoreDB) {
+        this.gestoreDB = gestoreDB;
+    }
+
+    /**
      * Registra un nuovo utente nel sistema dopo aver effettuato il controllo dei dati.
      *
      * L'attributo parametro corrisponde alla matricola (Studente) o al codice identificativo (Bibliotecario)
