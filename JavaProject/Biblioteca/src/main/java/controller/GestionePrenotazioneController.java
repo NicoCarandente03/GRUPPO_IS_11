@@ -217,6 +217,67 @@ public class GestionePrenotazioneController {
     }
 
     /**
+     * Recupera l'elenco delle prenotazioni attive per studente da mostrare
+     * in tabella, per le quali è possibile effettuare il check-in.
+     */
+    public List<PrenotazioneDTO> richiediPrenotazioniAttive(String matricola) {
+        List<PrenotazioneDTO> attive = new ArrayList<>();
+
+        for (Prenotazione prenotazione : gestoreDB.trovaPrenotazioniAttivePerStudente(matricola)) {
+            attive.add(convertiInDTO(prenotazione));
+        }
+
+        return attive;
+    }
+
+    /**
+     * Registra la conferma della presenza dello studente in biblioteca
+     * sfruttando i parametri caricati dal file di configurazione.
+     *
+     * Lo studente non digita a mano il codice di una prenotazione:
+     * accede al suo profilo per visualizzare la lista delle prenotazioni
+     * attive. Una volta selezionata, il sistema esegue un controllo per
+     * decidere se abilitare il bottone del check-in.
+     */
+    public void checkin(String idPrenotazione) {
+        Prenotazione prenotazione = gestoreDB.trovaPrenotazionePerId(idPrenotazione);
+        if (prenotazione == null) {
+            throw new BusinessException("Nessuna prenotazione esistente");
+        }
+
+        //Delega della validazione
+        verificaValiditaCheckin(prenotazione);
+
+        boolean esito = prenotazione.checkin(this.intervalloCheckInMinuti);
+        if (!esito) {
+            throw new BusinessException("Impossibile confermare la presenza");
+        }
+
+        gestoreDB.aggiorna(prenotazione);
+    }
+
+    //Controllo sulla validità del check-in
+    private void verificaValiditaCheckin(Prenotazione prenotazione) {
+        LocalDateTime adesso = LocalDateTime.now();
+
+        //intervallo valido
+        if (prenotazione.isCheckinValido(this.intervalloCheckInMinuti, adesso)) {
+            return;
+        }
+
+        //intervallo scaduto
+        if (prenotazione.isCheckinScaduto(this.intervalloCheckInMinuti, adesso)) {
+            prenotazione.scadi();
+            gestoreDB.aggiorna(prenotazione);
+            throw new BusinessException("Check-in fallito per intervallo superato. Prenotazione annullata");
+        }
+
+        //Se l'intervallo non è valido e non è scaduto, significa che non
+        //è ancora iniziato
+        throw new BusinessException("Check-in non consentito per intervallo non iniziato");
+    }
+
+    /**
      * Traduce una prenotazione nel DTO che il Boundary sa mostrare, risalendo
      * ad area e sala dalla postazione prenotata.
      */

@@ -40,11 +40,11 @@ public class GestorePersistenza {
     }
 
 
-    //Metodi utilizzati in Registrazione
+    //Metodo utilizzato in Registrazione
     public Utente trovaUtentePerEmail(String email) {
         return DBManager.getInstance().esegui(em -> {
             try {
-                return em.createQuery("SELECT u FROM Utente WHERE u.email = :email", Utente.class).setParameter("email", email).getSingleResult();
+                return em.createQuery("SELECT u FROM Utente u WHERE u.email = :email", Utente.class).setParameter("email", email).getSingleResult();
             } catch (NoResultException e) {
                 return null;
             }
@@ -58,6 +58,8 @@ public class GestorePersistenza {
      *
      * Restituisce null se non esiste: e' il caso di test in cui lo studente
      * indica un identificativo inesistente.
+     *
+     * Usato anche in checkin
      */
     public Prenotazione trovaPrenotazionePerId(String idPrenotazione) {
         return DBManager.getInstance().esegui(em -> em.find(Prenotazione.class, idPrenotazione));
@@ -175,30 +177,15 @@ public class GestorePersistenza {
     }*/
 
 
+    /**
+     * Aggiorna un'entità già esistente nel database (Equivalente all'UPDATE
+     * in SQL).
+     *
+     * Utilizzato in checkin.
+     */
     public void aggiorna(Object entity) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            em.getTransaction().begin();
-            em.merge(entity);
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-
-            throw new RuntimeException("Errore durante l'aggiornamento nel database.");
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public void aggiorna(Object entity) {
         DBManager.getInstance().eseguiInTransazione(em -> em.merge(entity));
-    }*/
+    }
 
 
     public void rimuovi(Object entity) {
@@ -414,4 +401,12 @@ public class GestorePersistenza {
             });
         }
     }*/
+
+    //Metodo utilizzato in checkin
+    public List<Prenotazione> trovaPrenotazioniAttivePerStudente (String matricola) {
+        return DBManager.getInstance().esegui(em -> {
+            String jpql = "SELECT p FROM Prenotazione p WHERE p.studente.matricola = :matricola AND p.stato = :stato";
+            return  em.createQuery(jpql, Prenotazione.class).setParameter("matricola", matricola).setParameter("stato", Prenotazione.ATTIVA).getResultList();
+        });
+    }
 }

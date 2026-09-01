@@ -211,6 +211,23 @@ public class Prenotazione {
     }
 
     /**
+     * Vero se il tempo massimo per effettuare il check-in è stato superato.
+     * Permette di distinguere un ritardo da un anticipo.
+     */
+    public boolean isCheckinScaduto(int intervalloCheckinMinuti) {
+        return isCheckinScaduto(intervalloCheckinMinuti, LocalDateTime.now());
+    }
+
+    public boolean isCheckinScaduto(int intervalloCheckinMinuti, LocalDateTime adesso) {
+        if (!ATTIVA.equals(stato)) {
+            return false;
+        }
+        LocalDateTime inizio = FasceOrarie.inizio(data, fasciaOraria);
+        LocalDateTime chiusura = inizio.plusMinutes(intervalloCheckinMinuti);
+        return adesso.isAfter(chiusura);
+    }
+
+    /**
      * Vero se mancano ancora almeno limiteAnnullamentoMinuti all'inizio della
      * fascia. Vale solo per le prenotazioni non ancora confermate.
      */
