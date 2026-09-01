@@ -40,11 +40,33 @@ public class GestorePersistenza {
     }
 
 
-    //Metodo utilizzato in Registrazione
+    /**
+     * Metodo utilizzato in Registrazione e in Login.
+     *
+     * La ricerca va fatta su Studente e su Bibliotecario separatamente perche'
+     * Utente e' annotata @MappedSuperclass: non e' un'entity, non ha una tabella
+     * e JPQL non la accetta come radice di una query. Scriverla come
+     * "SELECT u FROM Utente u" fa fallire l'accesso con
+     * UnknownEntityException: Could not resolve root entity 'Utente'.
+     *
+     * L'email e' dichiarata unica, quindi al massimo una delle due ricerche
+     * restituisce un risultato.
+     */
     public Utente trovaUtentePerEmail(String email) {
+        Utente studente = cercaPerEmail(email, Studente.class);
+        if (studente != null) {
+            return studente;
+        }
+        return cercaPerEmail(email, Bibliotecario.class);
+    }
+
+
+    /** Cerca per email dentro una sola delle due tabelle degli utenti. */
+    private <T extends Utente> T cercaPerEmail(String email, Class<T> tipo) {
         return DBManager.getInstance().esegui(em -> {
             try {
-                return em.createQuery("SELECT u FROM Utente u WHERE u.email = :email", Utente.class).setParameter("email", email).getSingleResult();
+                String jpql = "SELECT u FROM " + tipo.getSimpleName() + " u WHERE u.email = :email";
+                return em.createQuery(jpql, tipo).setParameter("email", email).getSingleResult();
             } catch (NoResultException e) {
                 return null;
             }
