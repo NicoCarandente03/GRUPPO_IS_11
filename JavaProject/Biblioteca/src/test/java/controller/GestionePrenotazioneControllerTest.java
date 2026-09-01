@@ -2,19 +2,24 @@ package controller;
 
 import database.GestorePersistenza;
 import eccezioni.BusinessException;
+
 import entity.Area;
 import entity.Postazione;
 import entity.Prenotazione;
 import entity.SalaStudio;
 import entity.Studente;
 import external.ServizioDiNotificheMock;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -161,5 +166,56 @@ class GestionePrenotazioneControllerTest {
                 errore.getMessage());
         assertEquals(Prenotazione.ATTIVA, prenotazione.getStato());
         assertEquals(0, notifiche.getNumeroInvii(), "nessuna notifica se l'annullamento fallisce");
+    }
+
+    @Test
+    @DisplayName("TC7 effettua prenotazione scegliendo postazione specifica")
+    void effettuaPrenotazioneConPostazione() {
+        // Creiamo una finta postazione per il test
+        Postazione postazione = new Postazione("P-01");
+
+        // Istruiamo il finto DB di Michela (gestoreDB)
+        when(gestoreDB.trovaPerMatricola("N46001234")).thenReturn(titolare);
+        when(gestoreDB.trovaPostazionePerId("P-01")).thenReturn(postazione);
+
+        // Eseguiamo il tuo metodo
+        boolean esito = controller.effettuaPrenotazione("N46001234", DATA_PRENOTAZIONE, "S001", FASCIA, "A001", "P-01");
+
+        // Asserzioni
+        assertTrue(esito, "La prenotazione deve andare a buon fine e restituire true");
+        verify(gestoreDB).salva(any(Prenotazione.class));
+    }
+
+    @Test
+    @DisplayName("TC8 effettua prenotazione con assegnazione automatica")
+    void effettuaPrenotazioneAssegnazioneAutomatica() {
+        Postazione postazione = new Postazione("P-01");
+        List<Postazione> postazioniLibere = new ArrayList<>();
+        postazioniLibere.add(postazione);
+
+        when(gestoreDB.trovaPerMatricola("N46001234")).thenReturn(titolare);
+        // Simuliamo che il DB trovi una sedia libera per l'assegnazione automatica
+        when(gestoreDB.trovaPostazioniLibere("S001", DATA_PRENOTAZIONE, FASCIA)).thenReturn(postazioniLibere);
+
+        // Eseguiamo il metodo passando stringhe vuote per area e postazione
+        boolean esito = controller.effettuaPrenotazione("N46001234", DATA_PRENOTAZIONE, "S001", FASCIA, "", "");
+
+        assertTrue(esito, "La prenotazione deve riuscire grazie all'assegnazione automatica");
+        verify(gestoreDB).salva(any(Prenotazione.class));
+    }
+
+    @Test
+    @DisplayName("TC9 effettua prenotazione fallita per sala piena")
+    void effettuaPrenotazioneSalaPiena() {
+        when(gestoreDB.trovaPerMatricola("N46001234")).thenReturn(titolare);
+
+        // Simuliamo che il DB NON trovi nessuna sedia libera (lista vuota)
+        when(gestoreDB.trovaPostazioniLibere("S001", DATA_PRENOTAZIONE, FASCIA)).thenReturn(new ArrayList<>());
+
+        boolean esito = controller.effettuaPrenotazione("N46001234", DATA_PRENOTAZIONE, "S001", FASCIA, "", "");
+
+        assertFalse(esito, "La prenotazione deve fallire restituendo false se non ci sono posti");
+        // Verifichiamo che in caso di errore, il metodo salva() NON venga mai chiamato
+        verify(gestoreDB, never()).salva(any(Prenotazione.class));
     }
 }

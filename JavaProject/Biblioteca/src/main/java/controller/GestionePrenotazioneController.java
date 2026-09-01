@@ -85,7 +85,6 @@ public class GestionePrenotazioneController {
     }
 
 
-
     public List<SalaStudio> consultazioneDisponibilitaSaleStudio(LocalDate data, String fasciaOraria) {
         // Il controller demanda la logica al package database e restituisce il risultato
         return gestoreDB.trovaTutteLeSaleDisponibili(data, fasciaOraria);
