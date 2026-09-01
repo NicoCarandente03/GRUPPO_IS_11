@@ -26,6 +26,15 @@ import java.util.List;
  */
 public class FormProfiloStudente implements BoundaryProfiloStudente {
 
+    /**
+     * Messaggio per i guasti tecnici, distinti dagli errori di regola di
+     * business: questi ultimi arrivano come BusinessException con un testo gia'
+     * pensato per l'utente, mentre un database irraggiungibile non ha un
+     * messaggio suo da mostrare.
+     */
+    private static final String TESTO_ERRORE_TECNICO =
+            "Errore tecnico, operazione non riuscita. Controlla che il database sia raggiungibile.";
+
     private static final String[] COLONNE = {
             "ID", "Data", "Fascia oraria", "Sala", "Area", "Postazione", "Stato"
     };
@@ -87,8 +96,15 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
 
     @Override
     public void visualizzaPrenotazioniEffettuate() {
-        List<PrenotazioneDTO> prenotazioni =
-                controller.visualizzaPrenotazioniEffettuate(matricolaStudente);
+        List<PrenotazioneDTO> prenotazioni;
+
+        try {
+            prenotazioni = controller.visualizzaPrenotazioniEffettuate(matricolaStudente);
+        } catch (RuntimeException e) {
+            tabellaPrenotazioni.setModel(new DefaultTableModel(COLONNE, 0));
+            mostraErrore(TESTO_ERRORE_TECNICO);
+            return;
+        }
 
         DefaultTableModel modello = new DefaultTableModel(COLONNE, 0);
 
@@ -129,6 +145,8 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
             mostraMessaggio("Prenotazione annullata con successo");
         } catch (BusinessException e) {
             mostraErrore(e.getMessage());
+        } catch (RuntimeException e) {
+            mostraErrore(TESTO_ERRORE_TECNICO);
         }
 
         visualizzaPrenotazioniEffettuate();

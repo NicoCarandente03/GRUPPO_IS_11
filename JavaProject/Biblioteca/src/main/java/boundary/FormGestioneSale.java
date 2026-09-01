@@ -35,6 +35,14 @@ import java.util.List;
  */
 public class FormGestioneSale implements BoundaryGestioneSale {
 
+    /**
+     * Messaggio per i guasti tecnici, distinti dagli errori di regola di
+     * business: questi ultimi arrivano come BusinessException con un testo gia'
+     * pensato per l'utente.
+     */
+    private static final String TESTO_ERRORE_TECNICO =
+            "Errore tecnico, operazione non riuscita. Controlla che il database sia raggiungibile.";
+
     private final GestioneSaleController controller = GestioneSaleController.getInstance();
 
     private final String codiceBibliotecario;
@@ -148,6 +156,8 @@ public class FormGestioneSale implements BoundaryGestioneSale {
 
         } catch (BusinessException e) {
             mostraErrore(e.getMessage());
+        } catch (RuntimeException e) {
+            mostraErrore(TESTO_ERRORE_TECNICO);
         }
     }
 

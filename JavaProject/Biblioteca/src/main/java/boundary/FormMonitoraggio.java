@@ -42,6 +42,14 @@ import java.util.List;
  */
 public class FormMonitoraggio implements BoundaryMonitoraggioSale {
 
+    /**
+     * Messaggio per i guasti tecnici, distinti dagli errori di regola di
+     * business: questi ultimi arrivano come BusinessException con un testo gia'
+     * pensato per l'utente.
+     */
+    private static final String TESTO_ERRORE_TECNICO =
+            "Errore tecnico, operazione non riuscita. Controlla che il database sia raggiungibile.";
+
     /** Prima voce del menu, corrisponde al filtro sulla sala non applicato. */
     private static final String TUTTE_LE_SALE = "Tutte le sale";
 
@@ -143,6 +151,9 @@ public class FormMonitoraggio implements BoundaryMonitoraggioSale {
         } catch (BusinessException e) {
             tabellaRisultati.setModel(new DefaultTableModel(COLONNE, 0));
             mostraErrore(e.getMessage());
+        } catch (RuntimeException e) {
+            tabellaRisultati.setModel(new DefaultTableModel(COLONNE, 0));
+            mostraErrore(TESTO_ERRORE_TECNICO);
         }
     }
 
