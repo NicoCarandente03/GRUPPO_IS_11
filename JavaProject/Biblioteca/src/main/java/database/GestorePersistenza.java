@@ -152,34 +152,22 @@ public class GestorePersistenza {
      * il nome.
      */
     public List<SalaStudio> trovaTutteLeSale() {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-        List<SalaStudio> sale = new ArrayList<>();
 
-        try {
-            String jpql = "SELECT s FROM SalaStudio s ORDER BY s.nome";
-            sale = em.createQuery(jpql, SalaStudio.class).getResultList();
-        } catch (Exception e) {
-            System.err.println("Errore durante la lettura delle sale: " + e.getMessage());
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-
-        return sale;
-    }
-    //può essere così?
-    /*public List<SalaStudio> trovaTutteLeSale() {
+        // Passo al DBManager solo "cosa" fare (la query),
+        // lasciando a lui la responsabilità del "come" gestire la connessione
         return DBManager.getInstance().esegui(em -> {
+
+            // Formulazione della query JPQL
             String jpql = "SELECT s FROM SalaStudio s ORDER BY s.nome";
+
+            // Creazione della TypedQuery (type-safe) e restituzione immediata del risultato
             return em.createQuery(jpql, SalaStudio.class).getResultList();
         });
-    }*/
+    }
 
 
     /**
-     * Aggiorna un'entità già esistente nel database (Equivalente all'UPDATE
-     * in SQL).
+     * Aggiorna un'entità già esistente nel database (Equivalente all'UPDATE in SQL).
      *
      * Utilizzato in checkin.
      */
@@ -188,40 +176,24 @@ public class GestorePersistenza {
     }
 
 
+    /**
+     * Rimuove un'entità dal database (Equivalente al DELETE in SQL).
+     */
     public void rimuovi(Object entity) {
-        EntityManager em = DBManager.getInstance().getEntityManager();
-
-        try {
-            em.getTransaction().begin();
-            Object managedEntity = em.merge(entity);
-            em.remove(managedEntity);
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-
-            throw new RuntimeException("Errore durante l'eliminazione nel database.");
-        } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-    //può essere fatto così?
-    /*public void rimuovi(Object entity) {
         DBManager.getInstance().eseguiInTransazione(em -> {
+            // L'entità passata dal Controller potrebbe essere "detached" (scollegata).
+            // Usando em.merge(), la "riagganciamo" al contesto di persistenza attuale (managedEntity),
+            // rendendo così possibile la sua rimozione sicura senza generare eccezioni IllegalArgumentException.
             Object managedEntity = em.merge(entity);
             em.remove(managedEntity);
         });
-    }*/
+    }
 
 
     //
     // --- METODI PER I CASI D'USO DI PRENOTAZIONE ---
     //
-
+/*DA QUI*/
     //Interroga il database per recuperare l'elenco completo di tutte le sale studio fisicamente presenti.
     public List<SalaStudio> trovaTutteLeSaleDisponibili(LocalDate data, String fasciaOraria) {
         // Si richiede l'EntityManager al Singleton per interagire con Hibernate
@@ -247,12 +219,6 @@ public class GestorePersistenza {
         }
         return listaSale;
     }
-    //può essere fatto così?
-    /*public List<SalaStudio> trovaTutteLeSaleDisponibili() {
-        return DBManager.getInstance().esegui(em -> {
-            return em.createQuery("SELECT s FROM SalaStudio s", SalaStudio.class).getResultList();
-            });
-    }*/
 
 
     // Calcola dinamicamente le fasce orarie in cui la sala specificata dispone ancora di postazioni libere,
@@ -292,18 +258,6 @@ public class GestorePersistenza {
         }
         return fasceDisponibili;
     }
-    //può essere fatto così?
-    /*public List<String> trovaFasceOrarieDisponibili(String idSala, LocalDate data) {
-        return DBManager.getInstance().esegui(em -> {
-            List<String> fasceDisponibili = new ArrayList<>(FasceOrarie.getElenco());
-            String jpql = "SELECT p.fasciaOraria FROM Prenotazione p WHERE p.postazione.area.salaStudio.idSala = :idSala AND p.data = :data GROUP BY p.fasciaOraria HAVING COUNT(p.idPrenotazione) >= (SELECT s.numPostazioniTotali FROM SalaStudio s WHERE s.idSala = :idSala)";
-
-            List<String> fasceEsaurite = em.createQuery(jpql, String.class).setParameter("idSala", idSala).setParameter("data", data).getResultList();
-
-            fasceDisponibili.removeAll(fasceEsaurite);
-            return fasceDisponibili;
-        });
-    }*/
 
     // Ricerca di uno Studente all'interno del database tramite la sua matricola (chiave primaria)
     public Studente trovaPerMatricola(String matricola) {
@@ -321,10 +275,6 @@ public class GestorePersistenza {
         }
         return studente;
     }
-    //può essere fatto così?
-    /*public Studente trovaPerMatricola(String matricola) {
-        return DBManager.getInstance().esegui(em -> em.find(Studente.class, matricola));
-    }*/
 
 
     // Ricerca di una singola Postazione tramite il suo: "idPostazione" (chiave primaria)
@@ -342,10 +292,6 @@ public class GestorePersistenza {
         }
         return postazione;
     }
-    //può essere fatto così?
-    /*public Postazione trovaPostazionePerId(String idPostazione) {
-        return DBManager.getInstance().esegui(em -> em.find(Postazione.class, idPostazione));
-    }*/
 
 
     // Trova tutte le postazioni attualmente libere e agibili in una specifica sala,
@@ -391,16 +337,6 @@ public class GestorePersistenza {
 
         return postazioniLibere;
     }
-    //può essere fatto così?
-    /*public List<Postazione> trovaPostazioniLibere(String idSala, LocalDate data, String fasciaOraria) {
-        return DBManager.getInstance().esegui(em -> {
-            String jpql = "SELECT p FROM Postazione p WHERE p.area.salaStudio.idSala = :idSala AND p.isDisponibile = true AND NOT EXISTS
-            (SELECT 1 FROM Prenotazione pre WHERE pre.postazione = p AND pre.data = :data AND pre.fasciaOraria = :fasciaOraria AND pre.stato IN (:statoAttiva, :statoConfermata))";
-
-            return em.createQuery(jpql, Postazione.class).setParameter("idSala", idSala).setParameter("data", data).setParameter("fasciaOraria", fasciaOraria).setParameter("statoAttiva", Prenotazione.ATTIVA).setParameter("statoConfermata", Prenotazione.CONFERMATA).getResultList();
-            });
-        }
-    }*/
 
     //Metodo utilizzato in checkin
     public List<Prenotazione> trovaPrenotazioniAttivePerStudente (String matricola) {
