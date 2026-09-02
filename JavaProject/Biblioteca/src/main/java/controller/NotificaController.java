@@ -61,13 +61,7 @@ public class NotificaController {
                 + " per la fascia " + prenotazione.getFasciaOraria()
                 + " e' stata annullata. La postazione e' tornata disponibile.";
 
-        creaNotifica(testo).invia(destinatario);
-    }
-
-    /**
-     * Crea la notifica gia' collegata al servizio esterno di invio.
-     */
-    private Notifica creaNotifica(String testo) {
-        return new Notifica(testo, servizio);
+        servizio.invioNotifica(destinatario.getMatricola(), testo);
+        new Notifica(testo).invia(destinatario);
     }
 }

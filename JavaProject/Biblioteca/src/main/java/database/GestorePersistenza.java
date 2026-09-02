@@ -187,6 +187,17 @@ public class GestorePersistenza {
         });
     }
 
+    /**
+     * Elenco completo delle aree, di tutte le sale.
+     *
+     * Serve a GestioneSaleController per sapere qual e' l'ultimo
+     * identificativo assegnato e proseguire la numerazione.
+     */
+    public List<Area> trovaTutteLeAree() {
+        return DBManager.getInstance().esegui(em ->
+                em.createQuery("SELECT a FROM Area a", Area.class).getResultList());
+    }
+
 
     /**
      * Aggiorna un'entità già esistente nel database (Equivalente all'UPDATE in SQL).
@@ -250,9 +261,9 @@ public class GestorePersistenza {
             // la catena di relazioni: Prenotazione -> Postazione -> Area -> SalaStudio.
             String jpql = "SELECT p.fasciaOraria " +
                     "FROM Prenotazione p " +
-                    "WHERE p.postazione.area.salaStudio.id = :idSala AND p.data = :data " +
+                    "WHERE p.postazione.area.sala.idSala = :idSala AND p.data = :data " +
                     "GROUP BY p.fasciaOraria " +
-                    "HAVING COUNT(p.idPrenotazione) >= (SELECT s.numeroPostazioni FROM SalaStudio s WHERE s.id = :idSala)";
+                    "HAVING COUNT(p.idPrenotazione) >= (SELECT s.numPostazioniTotali FROM SalaStudio s WHERE s.idSala = :idSala)";
 
             // Esecuzione compatta con binding dei parametri
             List<String> fasceEsaurite = em.createQuery(jpql, String.class)
@@ -300,7 +311,7 @@ public class GestorePersistenza {
             // 2. Sia agibile (isDisponibile = true)
             // 3. Non esista una prenotazione attiva o confermata per la stessa postazione, data e ora.
             String jpql = "SELECT p FROM Postazione p " +
-                    "WHERE p.area.salaStudio.id = :idSala " +
+                    "WHERE p.area.sala.idSala = :idSala " +
                     "AND p.isDisponibile = true " +
                     "AND NOT EXISTS (" +
                     "    SELECT 1 FROM Prenotazione pre " +
