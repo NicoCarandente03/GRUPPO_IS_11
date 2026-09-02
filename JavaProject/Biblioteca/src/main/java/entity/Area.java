@@ -12,7 +12,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Area di una sala studio (silenziosa, consultazione, lavoro di gruppo).
@@ -118,8 +117,11 @@ public class Area {
      * l'aggregazione non prevede orphanRemoval.
      */
     public void sincronizzaPostazioni(int numPostazioni) {
+        int numero = massimoNumeroPostazione();
+
         while (postazioni.size() < numPostazioni) {
-            aggiungiPostazione(new Postazione(UUID.randomUUID().toString()));
+            numero++;
+            aggiungiPostazione(new Postazione(String.format("P-%s-%02d", idArea, numero)));
         }
         for (int i = postazioni.size() - 1; i >= 0 && postazioni.size() > numPostazioni; i--) {
             Postazione postazione = postazioni.get(i);
@@ -128,6 +130,29 @@ public class Area {
                 postazione.setArea(null);
             }
         }
+    }
+
+    /**
+     * Ultimo numero usato dalle postazioni dell'area, per proseguire la serie
+     * invece di ripartire da uno e generare un identificativo gia' esistente.
+     */
+    private int massimoNumeroPostazione() {
+        int massimo = 0;
+        String prefisso = "P-" + idArea + "-";
+
+        for (Postazione postazione : postazioni) {
+            String id = postazione.getIdPostazione();
+            if (id == null || !id.startsWith(prefisso)) {
+                continue;
+            }
+            try {
+                massimo = Math.max(massimo, Integer.parseInt(id.substring(prefisso.length())));
+            } catch (NumberFormatException e) {
+                // identificativo di formato diverso, resta fuori dalla numerazione
+            }
+        }
+
+        return massimo;
     }
 
     /** Vero se resta almeno una postazione libera nello slot indicato. */
