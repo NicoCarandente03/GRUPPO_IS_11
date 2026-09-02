@@ -15,6 +15,7 @@ import database.GestorePersistenza;
 
 import entity.Area;
 import entity.Studente;
+import entity.Utente;
 import entity.Prenotazione;
 import entity.SalaStudio;
 import entity.Postazione;
@@ -31,9 +32,13 @@ public class GestionePrenotazioneController {
     // 2. Collegamento al livello database
     private GestorePersistenza gestoreDB;
 
+    // 3. Sessione, per sapere chi sta lavorando senza farselo dire da fuori
+    private AutenticazioneController autenticazione;
+
     // Costruttore privato
     private GestionePrenotazioneController() {
         this.gestoreDB = new GestorePersistenza();
+        this.autenticazione = AutenticazioneController.getInstance();
         caricaConfigurazione();
     }
 
@@ -70,12 +75,14 @@ public class GestionePrenotazioneController {
 
 
     /**
-     * Costruttore usato dai test, che passano un finto GestorePersistenza al
-     * posto di quello reale. Non e' pubblico proprio per non essere usato
-     * altrove: l'applicazione passa sempre da getInstance().
+     * Costruttore usato dai test, che passano un finto GestorePersistenza e una
+     * finta sessione al posto di quelli reali. Non e' pubblico proprio per non
+     * essere usato altrove: l'applicazione passa sempre da getInstance().
      */
-    GestionePrenotazioneController(GestorePersistenza gestoreDB) {
+    GestionePrenotazioneController(GestorePersistenza gestoreDB,
+                                   AutenticazioneController autenticazione) {
         this.gestoreDB = gestoreDB;
+        this.autenticazione = autenticazione;
         caricaConfigurazione();
     }
 
@@ -280,29 +287,25 @@ public class GestionePrenotazioneController {
     /**
      * Annulla una prenotazione e rende di nuovo disponibile la postazione.
      *
-     * I controlli sono nell'ordine dei casi di test del piano funzionale, e ogni
+     * I controlli seguono l'ordine dei casi di test del piano funzionale e ogni
      * fallimento solleva una BusinessException con il messaggio previsto: un
-     * valore di ritorno booleano non basterebbe a distinguere cinque errori
-     * diversi.
+     * esito booleano non distinguerebbe fra i diversi motivi del rifiuto.
      *
-     * Il parametro con la matricola del richiedente non compare nel diagramma,
-     * ma serve al controllo di proprieta' richiesto dal caso di test 3: uno
-     * studente puo' annullare solo le proprie prenotazioni.
-     *
-     * E' un parametro temporaneo. Quando ci sara' il Log-in, la matricola verra'
-     * letta dalla sessione tenuta da AutenticazioneController e il metodo tornera'
-     * ad avere la firma del diagramma, con il solo idPrenotazione.
+     * Vale il controllo di proprieta': uno studente puo' annullare solo le
+     * proprie prenotazioni. Chi sta chiedendo l'annullamento non lo si chiede a
+     * chi invoca il metodo, si legge dalla sessione.
      */
-    public void annullamentoPrenotazione(String idPrenotazione, String matricolaRichiedente) {
-        annullamentoPrenotazione(idPrenotazione, matricolaRichiedente, LocalDateTime.now());
+    public void annullamentoPrenotazione(String idPrenotazione) {
+        annullamentoPrenotazione(idPrenotazione, LocalDateTime.now());
     }
 
     /**
      * Variante con l'istante di riferimento esplicito, usata dai test per non
      * dipendere dall'orologio di sistema.
      */
-    public void annullamentoPrenotazione(String idPrenotazione, String matricolaRichiedente,
-                                         LocalDateTime adesso) {
+    public void annullamentoPrenotazione(String idPrenotazione, LocalDateTime adesso) {
+
+        String matricolaRichiedente = matricolaInSessione();
 
         Prenotazione prenotazione = gestoreDB.trovaPrenotazionePerId(idPrenotazione);
 
@@ -310,8 +313,7 @@ public class GestionePrenotazioneController {
             throw new BusinessException("Errore, la prenotazione selezionata è inesistente!");
         }
 
-        if (prenotazione.getStudente() == null
-                || !prenotazione.getStudente().getMatricola().equals(matricolaRichiedente)) {
+        if (!prenotazione.getStudente().getMatricola().equals(matricolaRichiedente)) {
             throw new BusinessException("Errore, non sei autorizzato ad annullare questa prenotazione!");
         }
 
@@ -334,6 +336,24 @@ public class GestionePrenotazioneController {
         gestoreDB.aggiorna(prenotazione.getPostazione());
 
         NotificaController.getInstance().notificaAnnullamento(prenotazione);
+    }
+
+    /**
+     * Matricola dello studente che ha effettuato l'accesso.
+     *
+     * Una sola condizione copre due casi, perche' instanceof e' falso anche per
+     * null: nessuna sessione aperta, e sessione aperta da un bibliotecario, che
+     * le prenotazioni degli studenti non le annulla.
+     */
+    private String matricolaInSessione() {
+        Utente utente = autenticazione.getUtenteLoggato();
+
+        if (!(utente instanceof Studente)) {
+            throw new BusinessException(
+                    "Errore, non sei autorizzato ad annullare questa prenotazione!");
+        }
+
+        return ((Studente) utente).getMatricola();
     }
 
     /**

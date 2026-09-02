@@ -1,8 +1,11 @@
 package boundary;
 
+import controller.AutenticazioneController;
 import controller.GestionePrenotazioneController;
 import dto.PrenotazioneDTO;
 import eccezioni.BusinessException;
+import entity.Studente;
+import entity.Utente;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -20,9 +23,16 @@ import java.awt.event.ActionListener;
 import java.util.List;
 
 /**
- * Finestra del profilo studente: mostra le prenotazioni dello studente che ha
- * effettuato l'accesso e permette di annullare quella selezionata o
- * confermare la sua presenza.
+ * Finestra del profilo studente: elenca le prenotazioni dello studente che ha
+ * effettuato l'accesso e permette di annullare quella selezionata o di
+ * confermarne la presenza con il check-in.
+ *
+ * La matricola non si digita e non viene passata da fuori: si legge dalla
+ * sessione tenuta da AutenticazioneController, cosi' la finestra non permette
+ * di agire sulle prenotazioni di un altro studente.
+ *
+ * La finestra non conosce le Entity: riceve dei PrenotazioneDTO gia' pronti da
+ * mettere in tabella.
  */
 public class FormProfiloStudente implements BoundaryProfiloStudente {
 
@@ -51,8 +61,8 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
     private JTable tabellaPrenotazioni;
     private JLabel etichettaEsito;
 
-    public FormProfiloStudente(String matricolaStudente) {
-        this.matricolaStudente = matricolaStudente;
+    public FormProfiloStudente() {
+        this.matricolaStudente = matricolaDallaSessione();
 
         costruisciInterfaccia();
 
@@ -78,6 +88,23 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
         });
 
         visualizzaPrenotazioniEffettuate();
+    }
+
+    /**
+     * Matricola dello studente che ha effettuato l'accesso.
+     *
+     * Una sola condizione copre due casi, perche' instanceof e' falso anche per
+     * null: nessuna sessione aperta, e sessione aperta da un bibliotecario, che
+     * nel profilo di uno studente non ha niente da fare.
+     */
+    private String matricolaDallaSessione() {
+        Utente utente = AutenticazioneController.getInstance().getUtenteLoggato();
+
+        if (!(utente instanceof Studente)) {
+            throw new BusinessException("Errore, nessuno studente ha effettuato l'accesso!");
+        }
+
+        return ((Studente) utente).getMatricola();
     }
 
     private void costruisciInterfaccia() {
@@ -154,7 +181,7 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
         String idPrenotazione = String.valueOf(tabellaPrenotazioni.getValueAt(riga, 0));
 
         try {
-            controller.annullamentoPrenotazione(idPrenotazione, matricolaStudente);
+            controller.annullamentoPrenotazione(idPrenotazione);
             mostraMessaggio("Prenotazione annullata con successo");
         } catch (BusinessException e) {
             mostraErrore(e.getMessage());

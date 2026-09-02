@@ -3,8 +3,10 @@ package controller;
 import database.GestorePersistenza;
 import dto.PrenotazioneDTO;
 import eccezioni.BusinessException;
+import entity.Bibliotecario;
 import entity.Prenotazione;
 import entity.SalaStudio;
+import entity.Utente;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,19 +19,25 @@ public class MonitoraggioSaleController {
     // 2. Collegamento al livello database
     private GestorePersistenza gestoreDB;
 
+    // 3. Sessione, per sapere chi sta lavorando senza farselo dire da fuori
+    private AutenticazioneController autenticazione;
+
     // Costruttore privato
     private MonitoraggioSaleController() {
         this.gestoreDB = new GestorePersistenza();
+        this.autenticazione = AutenticazioneController.getInstance();
     }
 
 
     /**
-     * Costruttore usato dai test, che passano un finto GestorePersistenza al
-     * posto di quello reale. Non e' pubblico proprio per non essere usato
-     * altrove: l'applicazione passa sempre da getInstance().
+     * Costruttore usato dai test, che passano un finto GestorePersistenza e una
+     * finta sessione al posto di quelli reali. Non e' pubblico proprio per non
+     * essere usato altrove: l'applicazione passa sempre da getInstance().
      */
-    MonitoraggioSaleController(GestorePersistenza gestoreDB) {
+    MonitoraggioSaleController(GestorePersistenza gestoreDB,
+                               AutenticazioneController autenticazione) {
         this.gestoreDB = gestoreDB;
+        this.autenticazione = autenticazione;
     }
 
     public static MonitoraggioSaleController getInstance() {
@@ -56,21 +64,20 @@ public class MonitoraggioSaleController {
      * Storico delle prenotazioni, filtrabile per sala e per studente.
      *
      * Entrambi i filtri sono facoltativi: senza nessuno dei due si ottiene lo
-     * storico completo. I controlli seguono l'ordine dei casi di test, e ogni
+     * storico completo. I controlli seguono l'ordine dei casi di test e ogni
      * fallimento solleva una BusinessException con il messaggio previsto.
      *
-     * Il codice del bibliotecario non compare nella firma del diagramma, ma il
-     * caso di test 3 richiede di negare l'accesso a chi non e' registrato. E' un
-     * parametro temporaneo: quando ci sara' il Log-in verra' letto dalla
-     * sessione.
+     * Chi consulta lo storico deve essere un bibliotecario registrato: non lo si
+     * chiede a chi invoca il metodo, si legge dalla sessione.
      *
      * Nel diagramma di sequenza il filtro sulla sala e' l'identificativo, mentre
      * il piano di test usa il nome: qui si segue il piano di test, perche' e' il
-     * nome quello che il bibliotecario digita.
+     * nome quello che il bibliotecario vede nel menu a tendina.
      */
-    public List<PrenotazioneDTO> consultazioneStoricoPrenotazioni(String codiceBibliotecario,
-                                                                  String nomeSala,
+    public List<PrenotazioneDTO> consultazioneStoricoPrenotazioni(String nomeSala,
                                                                   String matricolaStudente) {
+
+        String codiceBibliotecario = codiceBibliotecarioInSessione();
 
         if (gestoreDB.trovaPerCodiceIdentificativo(codiceBibliotecario) == null) {
             throw new BusinessException("Errore, accesso negato!");
@@ -95,6 +102,23 @@ public class MonitoraggioSaleController {
         }
 
         return risultati;
+    }
+
+    /**
+     * Codice del bibliotecario che ha effettuato l'accesso.
+     *
+     * Una sola condizione copre due casi, perche' instanceof e' falso anche per
+     * null: nessuna sessione aperta, e sessione aperta da uno studente, che lo
+     * storico di tutti non lo puo' vedere.
+     */
+    private String codiceBibliotecarioInSessione() {
+        Utente utente = autenticazione.getUtenteLoggato();
+
+        if (!(utente instanceof Bibliotecario)) {
+            throw new BusinessException("Errore, accesso negato!");
+        }
+
+        return ((Bibliotecario) utente).getCodiceIdentificativo();
     }
 
     /**

@@ -8,6 +8,7 @@ import entity.Area;
 import entity.Bibliotecario;
 import entity.Postazione;
 import entity.SalaStudio;
+import entity.Utente;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -36,19 +37,25 @@ public class GestioneSaleController {
     // 2. Collegamento al livello database
     private GestorePersistenza gestoreDB;
 
+    // 3. Sessione, per sapere chi sta lavorando senza farselo dire da fuori
+    private AutenticazioneController autenticazione;
+
     // Costruttore privato
     private GestioneSaleController() {
         this.gestoreDB = new GestorePersistenza();
+        this.autenticazione = AutenticazioneController.getInstance();
     }
 
 
     /**
-     * Costruttore usato dai test, che passano un finto GestorePersistenza al
-     * posto di quello reale. Non e' pubblico proprio per non essere usato
-     * altrove: l'applicazione passa sempre da getInstance().
+     * Costruttore usato dai test, che passano un finto GestorePersistenza e una
+     * finta sessione al posto di quelli reali. Non e' pubblico proprio per non
+     * essere usato altrove: l'applicazione passa sempre da getInstance().
      */
-    GestioneSaleController(GestorePersistenza gestoreDB) {
+    GestioneSaleController(GestorePersistenza gestoreDB,
+                           AutenticazioneController autenticazione) {
         this.gestoreDB = gestoreDB;
+        this.autenticazione = autenticazione;
     }
 
     public static GestioneSaleController getInstance() {
@@ -64,18 +71,19 @@ public class GestioneSaleController {
      * I controlli seguono l'ordine dei casi di test del piano funzionale, e ogni
      * fallimento solleva una BusinessException con il messaggio previsto.
      *
-     * Il codice del bibliotecario non compare nella firma del diagramma, ma
-     * serve a collegare la sala a chi la gestisce. E' un parametro temporaneo (!!!):
-     * quando ci sara' il Log-in verra' letto dalla sessione.
+     * La sala viene collegata al bibliotecario che la crea: non lo si chiede a
+     * chi invoca il metodo, si legge dalla sessione.
      *
-     * Una sala ha sempre almeno un'area: se il bibliotecario non ne indica nessuna, 
-     * ne viene creata una sola, di tipo generica, che copre l'intera sala.
-     * 
-     * Le postazioni vengono distribuite equamente fra le aree
+     * Una sala ha sempre almeno un'area: se il bibliotecario non ne indica
+     * nessuna ne viene creata una sola, di tipo generica, che copre l'intera
+     * sala. Le postazioni si dividono in parti uguali fra le aree, con il resto
+     * assegnato alla prima.
      */
     public SalaStudioDTO creazioneAulaStudio(String nome, String descrizione,
                                              String numPostazioniTotali, String orariApertura,
-                                             List<String> tipiArea, String codiceBibliotecario) {
+                                             List<String> tipiArea) {
+
+        String codiceBibliotecario = codiceBibliotecarioInSessione();
 
         verificaDatiValidi(nome, descrizione, numPostazioniTotali, orariApertura, tipiArea);
 
@@ -105,6 +113,23 @@ public class GestioneSaleController {
         gestoreDB.salva(sala);
 
         return convertiInDTO(sala);
+    }
+
+    /**
+     * Codice del bibliotecario che ha effettuato l'accesso.
+     *
+     * Una sola condizione copre due casi, perche' instanceof e' falso anche per
+     * null: nessuna sessione aperta, e sessione aperta da uno studente, che le
+     * sale non le puo' creare.
+     */
+    private String codiceBibliotecarioInSessione() {
+        Utente utente = autenticazione.getUtenteLoggato();
+
+        if (!(utente instanceof Bibliotecario)) {
+            throw new BusinessException("Errore, accesso negato!");
+        }
+
+        return ((Bibliotecario) utente).getCodiceIdentificativo();
     }
 
     /**

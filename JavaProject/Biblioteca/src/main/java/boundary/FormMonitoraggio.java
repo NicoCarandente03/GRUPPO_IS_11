@@ -1,8 +1,11 @@
 package boundary;
 
+import controller.AutenticazioneController;
 import controller.MonitoraggioSaleController;
 import dto.PrenotazioneDTO;
 import eccezioni.BusinessException;
+import entity.Bibliotecario;
+import entity.Utente;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -28,13 +31,12 @@ import java.util.List;
  *
  * La sala si sceglie da un menu a tendina costruito sulle sale registrate,
  * invece di digitarne il nome: cosi' non si puo' sbagliare, e il requisito RF21
- * parla appunto di consultare lo storico per ciascuna sala. La prima voce dice
- * esplicitamente "Tutte le sale" e corrisponde al filtro non applicato.
+ * chiede appunto di consultare lo storico per ciascuna sala. La prima voce,
+ * "Tutte le sale", corrisponde al filtro non applicato.
  *
- * Il codice del bibliotecario non si digita: arriva al costruttore da chi apre
- * la finestra, oggi il main di prova e domani AutenticazioneController
- * leggendolo dalla sessione. Cosi' la finestra non permette di spacciarsi per un
- * altro bibliotecario.
+ * Il codice del bibliotecario non si digita e non viene passato da fuori: si
+ * legge dalla sessione tenuta da AutenticazioneController, cosi' la finestra
+ * non permette di spacciarsi per un altro bibliotecario.
  *
  * La finestra non conosce le Entity: riceve dei PrenotazioneDTO gia' pronti da
  * mettere in tabella.
@@ -69,8 +71,8 @@ public class FormMonitoraggio implements BoundaryMonitoraggioSale {
     private JTable tabellaRisultati;
     private JLabel etichettaEsito;
 
-    public FormMonitoraggio(String codiceBibliotecario) {
-        this.codiceBibliotecario = codiceBibliotecario;
+    public FormMonitoraggio() {
+        this.codiceBibliotecario = codiceDallaSessione();
         costruisciInterfaccia();
 
         bottoneCerca.addActionListener(new ActionListener() {
@@ -90,6 +92,23 @@ public class FormMonitoraggio implements BoundaryMonitoraggioSale {
         });
 
         consultazioneStoricoPrenotazioni();
+    }
+
+    /**
+     * Codice del bibliotecario che ha effettuato l'accesso.
+     *
+     * Una sola condizione copre due casi, perche' instanceof e' falso anche per
+     * null: nessuna sessione aperta, e sessione aperta da uno studente, che non
+     * puo' consultare lo storico di tutti.
+     */
+    private String codiceDallaSessione() {
+        Utente utente = AutenticazioneController.getInstance().getUtenteLoggato();
+
+        if (!(utente instanceof Bibliotecario)) {
+            throw new BusinessException("Errore, nessun bibliotecario ha effettuato l'accesso!");
+        }
+
+        return ((Bibliotecario) utente).getCodiceIdentificativo();
     }
 
     private void costruisciInterfaccia() {
@@ -124,7 +143,6 @@ public class FormMonitoraggio implements BoundaryMonitoraggioSale {
     public void consultazioneStoricoPrenotazioni() {
         try {
             List<PrenotazioneDTO> risultati = controller.consultazioneStoricoPrenotazioni(
-                    codiceBibliotecario,
                     salaSelezionata(),
                     campoMatricola.getText().trim());
 

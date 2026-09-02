@@ -38,23 +38,30 @@ import static org.mockito.Mockito.when;
 class MonitoraggioSaleControllerTest {
 
     private GestorePersistenza gestoreDB;
+    private AutenticazioneController autenticazione;
     private MonitoraggioSaleController controller;
 
     private Studente studente;
     private SalaStudio sala;
+    private Bibliotecario bibliotecario;
 
     @BeforeEach
     void preparaAmbiente() {
         gestoreDB = mock(GestorePersistenza.class);
-        controller = new MonitoraggioSaleController(gestoreDB);
+        autenticazione = mock(AutenticazioneController.class);
+        controller = new MonitoraggioSaleController(gestoreDB, autenticazione);
 
         studente = new Studente("Giulia", "Romano", "n46001234@studenti.unina.it",
                 "studente1", "N46001234");
 
         sala = new SalaStudio("S001", "Sala Lettura A", "Piano 1", 3, "08:00 - 20:00");
 
-        when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(
-                new Bibliotecario("Marco", "Esposito", "m.esposito@unina.it", "x", "B1234"));
+        bibliotecario = new Bibliotecario("Marco", "Esposito", "m.esposito@unina.it", "x", "B1234");
+
+        // il bibliotecario ha gia' effettuato l'accesso, salvo dove serve il contrario
+        when(autenticazione.getUtenteLoggato()).thenReturn(bibliotecario);
+
+        when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(bibliotecario);
         when(gestoreDB.trovaSalaPerNome("Sala Lettura A")).thenReturn(sala);
         when(gestoreDB.trovaPerMatricola("N46001234")).thenReturn(studente);
     }
@@ -78,7 +85,7 @@ class MonitoraggioSaleControllerTest {
                 .thenReturn(List.of(creaPrenotazione("P001")));
 
         List<PrenotazioneDTO> risultati = controller.consultazioneStoricoPrenotazioni(
-                "B1234", "Sala Lettura A", "N46001234");
+                "Sala Lettura A", "N46001234");
 
         assertEquals(1, risultati.size());
         PrenotazioneDTO prenotazione = risultati.get(0);
@@ -96,7 +103,7 @@ class MonitoraggioSaleControllerTest {
                 .thenReturn(List.of(creaPrenotazione("P001"), creaPrenotazione("P002")));
 
         List<PrenotazioneDTO> risultati =
-                controller.consultazioneStoricoPrenotazioni("B1234", "", "");
+                controller.consultazioneStoricoPrenotazioni("", "");
 
         assertEquals(2, risultati.size());
         // senza filtri non deve verificare ne' sala ne' studente
@@ -107,11 +114,14 @@ class MonitoraggioSaleControllerTest {
     @Test
     @DisplayName("TC3 matricola richiedente non registrata")
     void richiedenteNonRegistrato() {
+        // in sessione c'e' un bibliotecario che il database non conosce
+        when(autenticazione.getUtenteLoggato()).thenReturn(
+                new Bibliotecario("Ignoto", "Ignoto", "ignoto@unina.it", "x", "B9999"));
         when(gestoreDB.trovaPerCodiceIdentificativo("B9999")).thenReturn(null);
 
         BusinessException errore = assertThrows(BusinessException.class,
                 () -> controller.consultazioneStoricoPrenotazioni(
-                        "B9999", "Sala Lettura A", "N46001234"));
+                        "Sala Lettura A", "N46001234"));
 
         assertEquals("Errore, accesso negato!", errore.getMessage());
         verify(gestoreDB, never()).trovaPrenotazioniStoriche(any(), any());
@@ -124,7 +134,7 @@ class MonitoraggioSaleControllerTest {
 
         BusinessException errore = assertThrows(BusinessException.class,
                 () -> controller.consultazioneStoricoPrenotazioni(
-                        "B1234", "Sala Bellissima", "N46001234"));
+                        "Sala Bellissima", "N46001234"));
 
         assertEquals("Errore, la sala studio selezionata non esiste!", errore.getMessage());
         verify(gestoreDB, never()).trovaPrenotazioniStoriche(any(), any());
@@ -137,7 +147,7 @@ class MonitoraggioSaleControllerTest {
 
         BusinessException errore = assertThrows(BusinessException.class,
                 () -> controller.consultazioneStoricoPrenotazioni(
-                        "B1234", "Sala Lettura A", "N46999999"));
+                        "Sala Lettura A", "N46999999"));
 
         assertEquals("Errore, lo studente indicato non esiste!", errore.getMessage());
     }

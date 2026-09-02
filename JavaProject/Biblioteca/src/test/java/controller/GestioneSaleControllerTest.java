@@ -36,22 +36,29 @@ class GestioneSaleControllerTest {
     private static final String ORARI = "08:00 - 20:00";
 
     private GestorePersistenza gestoreDB;
+    private AutenticazioneController autenticazione;
     private GestioneSaleController controller;
 
     @BeforeEach
     void preparaAmbiente() {
         gestoreDB = mock(GestorePersistenza.class);
-        controller = new GestioneSaleController(gestoreDB);
+        autenticazione = mock(AutenticazioneController.class);
+        controller = new GestioneSaleController(gestoreDB, autenticazione);
+
+        Bibliotecario bibliotecario =
+                new Bibliotecario("Marco", "Esposito", "m.esposito@unina.it", "x", "B1234");
+
+        // il bibliotecario ha gia' effettuato l'accesso, salvo dove serve il contrario
+        when(autenticazione.getUtenteLoggato()).thenReturn(bibliotecario);
 
         // nessuna sala omonima e bibliotecario esistente, salvo dove serve il contrario
         when(gestoreDB.trovaSalaPerNome(anyString())).thenReturn(null);
-        when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(
-                new Bibliotecario("Marco", "Esposito", "m.esposito@unina.it", "x", "B1234"));
+        when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(bibliotecario);
     }
 
     private SalaStudioDTO crea(String nome, String descrizione, String postazioni,
                                String orari, List<String> aree) {
-        return controller.creazioneAulaStudio(nome, descrizione, postazioni, orari, aree, "B1234");
+        return controller.creazioneAulaStudio(nome, descrizione, postazioni, orari, aree);
     }
 
     private String messaggioErrore(String nome, String descrizione, String postazioni,

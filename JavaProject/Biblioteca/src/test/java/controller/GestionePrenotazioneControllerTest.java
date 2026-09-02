@@ -62,6 +62,7 @@ class GestionePrenotazioneControllerTest {
     private static final LocalDateTime TROPPO_TARDI_CHECKIN = LocalDateTime.of(2026, 9, 7, 14, 45);
 
     private GestorePersistenza gestoreDB;
+    private AutenticazioneController autenticazione;
     private GestionePrenotazioneController controller;
     private ServizioDiNotificheMock notifiche;
 
@@ -70,13 +71,17 @@ class GestionePrenotazioneControllerTest {
     @BeforeEach
     void preparaAmbiente() {
         gestoreDB = mock(GestorePersistenza.class);
-        controller = new GestionePrenotazioneController(gestoreDB);
+        autenticazione = mock(AutenticazioneController.class);
+        controller = new GestionePrenotazioneController(gestoreDB, autenticazione);
 
         notifiche = new ServizioDiNotificheMock();
         NotificaController.getInstance().setServizio(notifiche);
 
         titolare = new Studente("Giulia", "Romano", "n46001234@studenti.unina.it",
                 "studente1", "N46001234");
+
+        // e' il titolare ad avere effettuato l'accesso, salvo dove serve il contrario
+        when(autenticazione.getUtenteLoggato()).thenReturn(titolare);
     }
 
     /** Costruisce una prenotazione completa di sala, area e postazione. */
@@ -97,7 +102,7 @@ class GestionePrenotazioneControllerTest {
         Prenotazione prenotazione = creaPrenotazione("P001", titolare);
         when(gestoreDB.trovaPrenotazionePerId("P001")).thenReturn(prenotazione);
 
-        controller.annullamentoPrenotazione("P001", "N46001234", IN_TEMPO_ANNULLAMENTO);
+        controller.annullamentoPrenotazione("P001", IN_TEMPO_ANNULLAMENTO);
 
         assertEquals(Prenotazione.ANNULLATA, prenotazione.getStato());
         assertTrue(prenotazione.getPostazione().isDisponibile(),
@@ -113,7 +118,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P999")).thenReturn(null);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P999", "N46001234", IN_TEMPO_ANNULLAMENTO));
+                () -> controller.annullamentoPrenotazione("P999", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, la prenotazione selezionata è inesistente!", errore.getMessage());
         verify(gestoreDB, never()).aggiorna(any());
@@ -125,8 +130,13 @@ class GestionePrenotazioneControllerTest {
         Prenotazione prenotazione = creaPrenotazione("P001", titolare);
         when(gestoreDB.trovaPrenotazionePerId("P001")).thenReturn(prenotazione);
 
+        // ha effettuato l'accesso un altro studente, non il titolare
+        when(autenticazione.getUtenteLoggato()).thenReturn(
+                new Studente("Luca", "Bianchi", "n46004321@studenti.unina.it",
+                        "studente2", "N46004321"));
+
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P001", "N46004321", IN_TEMPO_ANNULLAMENTO));
+                () -> controller.annullamentoPrenotazione("P001", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, non sei autorizzato ad annullare questa prenotazione!",
                 errore.getMessage());
@@ -142,7 +152,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P002")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P002", "N46001234", IN_TEMPO_ANNULLAMENTO));
+                () -> controller.annullamentoPrenotazione("P002", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, la prenotazione risulta già annullata!", errore.getMessage());
         verify(gestoreDB, never()).aggiorna(any());
@@ -156,7 +166,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P003")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P003", "N46001234", IN_TEMPO_ANNULLAMENTO));
+                () -> controller.annullamentoPrenotazione("P003", IN_TEMPO_ANNULLAMENTO));
 
         assertEquals("Errore, la prenotazione risulta scaduta!", errore.getMessage());
     }
@@ -168,7 +178,7 @@ class GestionePrenotazioneControllerTest {
         when(gestoreDB.trovaPrenotazionePerId("P004")).thenReturn(prenotazione);
 
         BusinessException errore = assertThrows(BusinessException.class,
-                () -> controller.annullamentoPrenotazione("P004", "N46001234", TROPPO_TARDI_ANNULLAMENTO));
+                () -> controller.annullamentoPrenotazione("P004", TROPPO_TARDI_ANNULLAMENTO));
 
         assertEquals("Errore, il tempo limite per l'annullamento è stato superato!",
                 errore.getMessage());

@@ -6,6 +6,7 @@ import eccezioni.BusinessException;
 import entity.Bibliotecario;
 import entity.SalaStudio;
 import entity.Studente;
+import entity.Utente;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +41,13 @@ class ControlliAggiuntiviTest {
         return new Bibliotecario("Marco", "Esposito", "m.esposito@unina.it", "x", "B1234");
     }
 
+    /** Sessione finta, con l'utente indicato gia' loggato. */
+    private AutenticazioneController sessioneDi(Utente utente) {
+        AutenticazioneController autenticazione = mock(AutenticazioneController.class);
+        when(autenticazione.getUtenteLoggato()).thenReturn(utente);
+        return autenticazione;
+    }
+
     /**
      * Il diagramma di sequenza della creazione interroga trovaSalaPerNome prima
      * di creare la sala, per non ammettere due sale con lo stesso nome.
@@ -48,7 +56,8 @@ class ControlliAggiuntiviTest {
     @DisplayName("creazione, nome della sala gia' presente")
     void nomeSalaGiaEsistente() {
         GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
-        GestioneSaleController controller = new GestioneSaleController(gestoreDB);
+        GestioneSaleController controller =
+                new GestioneSaleController(gestoreDB, sessioneDi(bibliotecarioDiProva()));
 
         when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(bibliotecarioDiProva());
         when(gestoreDB.trovaSalaPerNome("Sala Lettura A")).thenReturn(
@@ -56,7 +65,7 @@ class ControlliAggiuntiviTest {
 
         BusinessException errore = assertThrows(BusinessException.class,
                 () -> controller.creazioneAulaStudio("Sala Lettura A", DESCRIZIONE, "40",
-                        ORARI, null, "B1234"));
+                        ORARI, null));
 
         assertEquals("Errore, esiste già una sala con questo nome!", errore.getMessage());
         verify(gestoreDB, never()).salva(any());
@@ -70,35 +79,37 @@ class ControlliAggiuntiviTest {
     @DisplayName("creazione, postazioni insufficienti per le aree richieste")
     void postazioniInsufficientiPerLeAree() {
         GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
-        GestioneSaleController controller = new GestioneSaleController(gestoreDB);
+        GestioneSaleController controller =
+                new GestioneSaleController(gestoreDB, sessioneDi(bibliotecarioDiProva()));
 
         when(gestoreDB.trovaSalaPerNome(anyString())).thenReturn(null);
         when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(bibliotecarioDiProva());
 
         BusinessException errore = assertThrows(BusinessException.class,
                 () -> controller.creazioneAulaStudio("Sala Lettura A", DESCRIZIONE, "2", ORARI,
-                        List.of("silenziosa", "consultazione", "lavoro di gruppo"), "B1234"));
+                        List.of("silenziosa", "consultazione", "lavoro di gruppo")));
 
         assertEquals("Errore, le postazioni non bastano per il numero di aree indicate!",
                 errore.getMessage());
     }
 
     /**
-     * La sala va collegata al bibliotecario che la gestisce, quindi il codice
-     * indicato deve corrispondere a un bibliotecario registrato.
+     * La sala va collegata al bibliotecario che la gestisce, quindi quello in
+     * sessione deve corrispondere a un bibliotecario registrato.
      */
     @Test
     @DisplayName("creazione, bibliotecario non registrato")
     void bibliotecarioNonRegistrato() {
         GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
-        GestioneSaleController controller = new GestioneSaleController(gestoreDB);
+        GestioneSaleController controller = new GestioneSaleController(gestoreDB,
+                sessioneDi(new Bibliotecario("Ignoto", "Ignoto", "ignoto@unina.it", "x", "B9999")));
 
         when(gestoreDB.trovaSalaPerNome(anyString())).thenReturn(null);
         when(gestoreDB.trovaPerCodiceIdentificativo("B9999")).thenReturn(null);
 
         BusinessException errore = assertThrows(BusinessException.class,
                 () -> controller.creazioneAulaStudio("Sala Lettura A", DESCRIZIONE, "40",
-                        ORARI, null, "B9999"));
+                        ORARI, null));
 
         assertEquals("Errore, il bibliotecario indicato non esiste!", errore.getMessage());
     }
@@ -112,7 +123,8 @@ class ControlliAggiuntiviTest {
     @DisplayName("storico, filtri validi ma nessun risultato")
     void storicoSenzaRisultati() {
         GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
-        MonitoraggioSaleController controller = new MonitoraggioSaleController(gestoreDB);
+        MonitoraggioSaleController controller =
+                new MonitoraggioSaleController(gestoreDB, sessioneDi(bibliotecarioDiProva()));
 
         when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(bibliotecarioDiProva());
         when(gestoreDB.trovaSalaPerNome("Sala Lettura A")).thenReturn(
@@ -123,9 +135,72 @@ class ControlliAggiuntiviTest {
                 .thenReturn(List.of());
 
         List<PrenotazioneDTO> risultati = controller.consultazioneStoricoPrenotazioni(
-                "B1234", "Sala Lettura A", "N46001234");
+                "Sala Lettura A", "N46001234");
 
         assertTrue(risultati.isEmpty(), "la ricerca riesce ma non trova nulla");
+    }
+
+    /**
+     * L'identita' arriva dalla sessione e non da chi invoca il metodo: senza
+     * accesso effettuato non si crea nessuna sala.
+     */
+    @Test
+    @DisplayName("creazione, nessun accesso effettuato")
+    void creazioneSenzaAccessoEffettuato() {
+        GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
+        GestioneSaleController controller =
+                new GestioneSaleController(gestoreDB, sessioneDi(null));
+
+        BusinessException errore = assertThrows(BusinessException.class,
+                () -> controller.creazioneAulaStudio("Sala Lettura A", DESCRIZIONE, "40",
+                        ORARI, null));
+
+        assertEquals("Errore, accesso negato!", errore.getMessage());
+        verify(gestoreDB, never()).salva(any());
+    }
+
+    /**
+     * La catena completa, con un AutenticazioneController vero al posto di una
+     * sessione finta: il bibliotecario effettua l'accesso e il controller ricava
+     * da li' il codice, senza che nessuno glielo passi.
+     */
+    @Test
+    @DisplayName("creazione, il codice arriva dalla sessione aperta dal login")
+    void codiceBibliotecarioLettoDallaSessione() {
+        GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
+        Bibliotecario bibliotecario = bibliotecarioDiProva();
+
+        AutenticazioneController autenticazione = new AutenticazioneController(gestoreDB);
+        when(gestoreDB.trovaUtentePerEmail("m.esposito@unina.it")).thenReturn(bibliotecario);
+        autenticazione.login("m.esposito@unina.it", "x");
+
+        GestioneSaleController controller = new GestioneSaleController(gestoreDB, autenticazione);
+        when(gestoreDB.trovaSalaPerNome(anyString())).thenReturn(null);
+        when(gestoreDB.trovaPerCodiceIdentificativo("B1234")).thenReturn(bibliotecario);
+
+        controller.creazioneAulaStudio("Sala Lettura A", DESCRIZIONE, "40", ORARI, null);
+
+        verify(gestoreDB).trovaPerCodiceIdentificativo("B1234");
+        verify(gestoreDB).salva(any(SalaStudio.class));
+    }
+
+    /**
+     * Cammino 1-2-3 di matricolaInSessione: senza uno studente in sessione
+     * l'annullamento non arriva nemmeno a cercare la prenotazione.
+     */
+    @Test
+    @DisplayName("annullamento, nessun accesso effettuato")
+    void annullamentoSenzaAccessoEffettuato() {
+        GestorePersistenza gestoreDB = mock(GestorePersistenza.class);
+        GestionePrenotazioneController controller =
+                new GestionePrenotazioneController(gestoreDB, sessioneDi(null));
+
+        BusinessException errore = assertThrows(BusinessException.class,
+                () -> controller.annullamentoPrenotazione("P001"));
+
+        assertEquals("Errore, non sei autorizzato ad annullare questa prenotazione!",
+                errore.getMessage());
+        verify(gestoreDB, never()).trovaPrenotazionePerId(anyString());
     }
 
     /**
@@ -136,8 +211,8 @@ class ControlliAggiuntiviTest {
     @Test
     @DisplayName("il limite di annullamento viene letto dalla configurazione")
     void limiteAnnullamentoDallaConfigurazione() {
-        GestionePrenotazioneController controller =
-                new GestionePrenotazioneController(mock(GestorePersistenza.class));
+        GestionePrenotazioneController controller = new GestionePrenotazioneController(
+                mock(GestorePersistenza.class), mock(AutenticazioneController.class));
 
         assertEquals(60, controller.getLimiteAnnullamentoMinuti());
         assertEquals(30, controller.getIntervalloCheckInMinuti());

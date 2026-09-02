@@ -137,6 +137,26 @@ public class AutenticazioneController {
     }
 
     /**
+     * Utente che ha effettuato l'accesso, oppure null se la sessione non e'
+     * aperta.
+     *
+     * E' da qui che le finestre ricavano l'identita' di chi sta lavorando,
+     * invece di farsela passare o, peggio, digitare: cosi' nessuno puo'
+     * spacciarsi per un altro utente.
+     */
+    public Utente getUtenteLoggato() {
+        return utenteLoggato;
+    }
+
+    /**
+     * Chiude la sessione. Da chiamare quando l'utente esce, altrimenti
+     * l'identita' precedente resterebbe valida per chi entra dopo.
+     */
+    public void logout() {
+        this.utenteLoggato = null;
+    }
+
+    /**
      * Verifica i dati inseriti, nell'ordine in cui il piano di test elenca le
      * classi di equivalenza: email, password
      */

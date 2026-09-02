@@ -1,9 +1,12 @@
 package boundary;
 
+import controller.AutenticazioneController;
 import controller.GestioneSaleController;
 import dto.AreaDTO;
 import dto.SalaStudioDTO;
 import eccezioni.BusinessException;
+import entity.Bibliotecario;
+import entity.Utente;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -26,11 +29,13 @@ import java.util.List;
 /**
  * Finestra di creazione di una sala studio.
  *
- * Il codice del bibliotecario arriva al costruttore da chi apre la finestra
+ * Il codice del bibliotecario non si digita e non viene passato da fuori: si
+ * legge dalla sessione tenuta da AutenticazioneController, cosi' la finestra
+ * non permette di spacciarsi per un altro bibliotecario.
  *
- * La finestra non conosce le Entity: passa i dati grezzi a
- * GestioneSaleController, cosi' come li ha digitati l'utente, e riceve indietro
- * un SalaStudioDTO da mostrare. Tutte le regole di validita' stanno nel controller
+ * La finestra non conosce le Entity: passa a GestioneSaleController i dati
+ * cosi' come li ha digitati l'utente e riceve indietro un SalaStudioDTO da
+ * mostrare. Tutte le regole di validita' stanno nel controller.
  */
 public class FormGestioneSale implements BoundaryGestioneSale {
 
@@ -59,8 +64,8 @@ public class FormGestioneSale implements BoundaryGestioneSale {
     private JButton bottoneCrea;
     private JLabel etichettaEsito;
 
-    public FormGestioneSale(String codiceBibliotecario) {
-        this.codiceBibliotecario = codiceBibliotecario;
+    public FormGestioneSale() {
+        this.codiceBibliotecario = codiceDallaSessione();
         costruisciInterfaccia();
 
         bottoneAggiungiArea.addActionListener(new ActionListener() {
@@ -86,6 +91,23 @@ public class FormGestioneSale implements BoundaryGestioneSale {
                 creazioneAulaStudio();
             }
         });
+    }
+
+    /**
+     * Codice del bibliotecario che ha effettuato l'accesso.
+     *
+     * Una sola condizione copre due casi, perche' instanceof e' falso anche per
+     * null: nessuna sessione aperta, e sessione aperta da uno studente, che non
+     * puo' creare sale.
+     */
+    private String codiceDallaSessione() {
+        Utente utente = AutenticazioneController.getInstance().getUtenteLoggato();
+
+        if (!(utente instanceof Bibliotecario)) {
+            throw new BusinessException("Errore, nessun bibliotecario ha effettuato l'accesso!");
+        }
+
+        return ((Bibliotecario) utente).getCodiceIdentificativo();
     }
 
     private void costruisciInterfaccia() {
@@ -147,8 +169,7 @@ public class FormGestioneSale implements BoundaryGestioneSale {
                     campoDescrizione.getText().trim(),
                     campoPostazioni.getText().trim(),
                     campoOrari.getText().trim(),
-                    tipiArea,
-                    codiceBibliotecario);
+                    tipiArea);
 
             mostraMessaggio("Operazione avvenuta con successo" + riepilogo(sala));
             svuotaCampi();

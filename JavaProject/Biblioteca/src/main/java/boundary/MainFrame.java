@@ -177,7 +177,7 @@ public class MainFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 finestraProfilo = apriUnaVolta(finestraProfilo,
-                        () -> new FormProfiloStudente(matricolaStudente).apriFormProfiloStudente());
+                        () -> new FormProfiloStudente().apriFormProfiloStudente());
             }
         });
 
@@ -215,7 +215,7 @@ public class MainFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 finestraGestioneSale = apriUnaVolta(finestraGestioneSale,
-                        () -> new FormGestioneSale(codiceBibliotecario).apriFormGestioneSale());
+                        () -> new FormGestioneSale().apriFormGestioneSale());
             }
         });
 
@@ -224,7 +224,7 @@ public class MainFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 finestraMonitoraggio = apriUnaVolta(finestraMonitoraggio,
-                        () -> new FormMonitoraggio(codiceBibliotecario).apriFormMonitoraggio());
+                        () -> new FormMonitoraggio().apriFormMonitoraggio());
             }
         });
 
@@ -258,14 +258,36 @@ public class MainFrame {
 
     /**
      * Torna alla schermata di accesso e dimentica l'identita' corrente.
+     *
+     * Chiude la sessione e con essa le schermate operative gia' aperte: sono le
+     * finestre di chi stava lavorando fino a un momento fa, e lasciarle aperte
+     * le farebbe usare da chi entra dopo.
      */
     private void esci() {
+        controller.logout();
+
+        chiudi(finestraProfilo);
+        chiudi(finestraPrenotazione);
+        chiudi(finestraGestioneSale);
+        chiudi(finestraMonitoraggio);
+
+        finestraProfilo = null;
+        finestraPrenotazione = null;
+        finestraGestioneSale = null;
+        finestraMonitoraggio = null;
+
         matricolaStudente = null;
         codiceBibliotecario = null;
         campoEmail.setText("");
         campoPassword.setText("");
         etichettaEsito.setText(" ");
         vaiA(CARTA_ACCESSO);
+    }
+
+    private void chiudi(JFrame finestra) {
+        if (finestra != null) {
+            finestra.dispose();
+        }
     }
 
     private void vaiA(String carta) {
@@ -286,9 +308,21 @@ public class MainFrame {
      */
     private JFrame apriUnaVolta(JFrame finestra, Supplier<JFrame> costruttore) {
         if (finestra == null || !finestra.isDisplayable()) {
-            JFrame nuova = costruttore.get();
-            nuova.setVisible(true);
-            return nuova;
+            try {
+                JFrame nuova = costruttore.get();
+                nuova.setVisible(true);
+                return nuova;
+
+            } catch (BusinessException e) {
+                // La finestra si rifiuta di aprirsi, per esempio perche' la
+                // sessione non e' quella che si aspetta.
+                mostraErrore(e.getMessage());
+                return null;
+
+            } catch (RuntimeException e) {
+                mostraErrore(TESTO_ERRORE_TECNICO);
+                return null;
+            }
         }
 
         finestra.toFront();
