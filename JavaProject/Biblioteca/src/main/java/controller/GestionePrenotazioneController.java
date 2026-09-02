@@ -7,11 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import dto.AreaDTO;
 import dto.PrenotazioneDTO;
 import eccezioni.BusinessException;
 
 import database.GestorePersistenza;
 
+import entity.Area;
 import entity.Studente;
 import entity.Prenotazione;
 import entity.SalaStudio;
@@ -95,6 +97,86 @@ public class GestionePrenotazioneController {
         return gestoreDB.trovaFasceOrarieDisponibili(idSala, data);
     }
 
+    /**
+     * Aree della sala che hanno ancora almeno una postazione libera nella data
+     * e nella fascia scelte, con quante ne restano.
+     *
+     * Le aree al completo non compaiono: sceglierle porterebbe a un elenco di
+     * postazioni vuoto. Il conteggio nel DTO e' quindi quello dei posti ancora
+     * liberi, non delle postazioni totali dell'area.
+     */
+    public List<AreaDTO> visualizzazioneAreeDisponibili(String idSala, LocalDate data,
+                                                        String fasciaOraria) {
+        List<String> idAree = new ArrayList<>();
+        List<String> tipi = new ArrayList<>();
+        List<Integer> liberePerArea = new ArrayList<>();
+
+        for (Postazione postazione : gestoreDB.trovaPostazioniLibere(idSala, data, fasciaOraria)) {
+            Area area = postazione.getArea();
+            if (area == null) {
+                continue;
+            }
+
+            int posizione = idAree.indexOf(area.getIdArea());
+            if (posizione < 0) {
+                idAree.add(area.getIdArea());
+                tipi.add(area.getTipo());
+                liberePerArea.add(1);
+            } else {
+                liberePerArea.set(posizione, liberePerArea.get(posizione) + 1);
+            }
+        }
+
+        List<AreaDTO> aree = new ArrayList<>();
+        for (int i = 0; i < idAree.size(); i++) {
+            aree.add(new AreaDTO(idAree.get(i), tipi.get(i), liberePerArea.get(i)));
+        }
+
+        return aree;
+    }
+
+    /**
+     * Identificativi delle postazioni ancora libere nella sala per la data e la
+     * fascia scelte.
+     *
+     * Restituisce solo le stringhe e non le Postazione perche' al Boundary
+     * serve unicamente cosa scrivere nella tendina, e le entity non devono
+     * uscire dal Controller.
+     */
+    public List<String> visualizzazionePostazioniLibere(String idSala, LocalDate data,
+                                                        String fasciaOraria) {
+        return visualizzazionePostazioniLibere(idSala, data, fasciaOraria, null);
+    }
+
+    /**
+     * Variante ristretta a una sola area della sala. Con idArea nullo o vuoto
+     * restituisce le postazioni libere di tutte le aree.
+     */
+    public List<String> visualizzazionePostazioniLibere(String idSala, LocalDate data,
+                                                        String fasciaOraria, String idArea) {
+        List<String> identificativi = new ArrayList<>();
+
+        for (Postazione postazione : gestoreDB.trovaPostazioniLibere(idSala, data, fasciaOraria)) {
+            if (appartieneAllArea(postazione, idArea)) {
+                identificativi.add(postazione.getIdPostazione());
+            }
+        }
+
+        return identificativi;
+    }
+
+    /**
+     * Vero se la postazione sta nell'area indicata, oppure se non e' stata
+     * indicata nessuna area e quindi vanno bene tutte.
+     */
+    private boolean appartieneAllArea(Postazione postazione, String idArea) {
+        if (idArea == null || idArea.trim().isEmpty()) {
+            return true;
+        }
+        return postazione.getArea() != null
+                && idArea.equals(postazione.getArea().getIdArea());
+    }
+
     public boolean effettuaPrenotazione(String matricola, LocalDate data, String idSala, String fasciaOraria, String idArea, String idPostazione) {
         boolean esitoCreazione = true;
         Prenotazione nuovaPrenotazione = new Prenotazione();
@@ -102,9 +184,8 @@ public class GestionePrenotazioneController {
         try {
             Studente studente = gestoreDB.trovaPerMatricola(matricola);
 
-            // Creazione UUID univoco per il database
-            String idUnivoco = java.util.UUID.randomUUID().toString();
-            nuovaPrenotazione.setIdPrenotazione(idUnivoco);
+            // Identificativo progressivo, nel formato delle prenotazioni gia' presenti
+            nuovaPrenotazione.setIdPrenotazione(generaIdPrenotazione());
 
             nuovaPrenotazione.setStudente(studente);
             nuovaPrenotazione.setData(data);
@@ -118,13 +199,24 @@ public class GestionePrenotazioneController {
                 Postazione postazione = gestoreDB.trovaPostazionePerId(idPostazione);
                 nuovaPrenotazione.setPostazione(postazione);
             } else {
-                // Se l'utente ha scelto solo la Sala, assegno in automatico la prima postazione libera trovata
+                // Se l'utente ha scelto solo la Sala, assegno in automatico la prima
+                // postazione libera trovata, rispettando l'area se ne ha indicata una
+                Postazione assegnata = null;
                 List<Postazione> postazioniLibere = gestoreDB.trovaPostazioniLibere(idSala, data, fasciaOraria);
-                if (postazioniLibere != null && !postazioniLibere.isEmpty()) {
-                    nuovaPrenotazione.setPostazione(postazioniLibere.get(0));
-                } else {
+
+                if (postazioniLibere != null) {
+                    for (Postazione postazione : postazioniLibere) {
+                        if (appartieneAllArea(postazione, idArea)) {
+                            assegnata = postazione;
+                            break;
+                        }
+                    }
+                }
+
+                if (assegnata == null) {
                     throw new Exception("Nessuna postazione libera in questa sala per l'orario scelto.");
                 }
+                nuovaPrenotazione.setPostazione(assegnata);
             }
 
             // Delegazione del salvataggio al DB
@@ -141,6 +233,34 @@ public class GestionePrenotazioneController {
         }
 
         return esitoCreazione;
+    }
+
+    /**
+     * Genera l'identificativo della nuova prenotazione nel formato usato dalle
+     * altre, una P seguita da tre cifre: dopo P005 viene P006.
+     *
+     * Il progressivo si ricava dal massimo gia' assegnato. Le prenotazioni con
+     * un vecchio id casuale non seguono il formato e vengono ignorate.
+     */
+    private String generaIdPrenotazione() {
+        int massimo = 0;
+
+        for (Prenotazione prenotazione : gestoreDB.trovaPrenotazioniStoriche(null, null)) {
+            massimo = Math.max(massimo, progressivo(prenotazione.getIdPrenotazione()));
+        }
+
+        return String.format("P%03d", massimo + 1);
+    }
+
+    /**
+     * Estrae il numero da un identificativo come P007, oppure zero se non
+     * segue quel formato.
+     */
+    private int progressivo(String idPrenotazione) {
+        if (idPrenotazione == null || !idPrenotazione.matches("P\\d+")) {
+            return 0;
+        }
+        return Integer.parseInt(idPrenotazione.substring(1));
     }
 
     /**

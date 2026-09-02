@@ -187,6 +187,17 @@ public class GestorePersistenza {
         });
     }
 
+    /**
+     * Elenco completo delle aree, di tutte le sale.
+     *
+     * Serve a GestioneSaleController per sapere qual e' l'ultimo
+     * identificativo assegnato e proseguire la numerazione.
+     */
+    public List<Area> trovaTutteLeAree() {
+        return DBManager.getInstance().esegui(em ->
+                em.createQuery("SELECT a FROM Area a", Area.class).getResultList());
+    }
+
 
     /**
      * Aggiorna un'entità già esistente nel database (Equivalente all'UPDATE in SQL).

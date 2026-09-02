@@ -13,7 +13,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class GestioneSaleController {
 
@@ -209,21 +208,41 @@ public class GestioneSaleController {
         int massimo = 0;
 
         for (SalaStudio sala : gestoreDB.trovaTutteLeSale()) {
-            massimo = Math.max(massimo, progressivo(sala.getIdSala()));
+            massimo = Math.max(massimo, progressivo(sala.getIdSala(), "S"));
         }
 
         return String.format("S%03d", massimo + 1);
     }
 
     /**
-     * Estrae il numero da un identificativo come S007, oppure zero se l'id non
-     * segue quel formato, come i vecchi id casuali.
+     * Genera l'identificativo di una nuova area, con la stessa regola delle
+     * sale ma con la lettera A: dopo A003 viene A004.
+     *
+     * La numerazione delle aree e' unica su tutte le sale, come nei dati di
+     * prova, quindi il massimo va cercato fra tutte le aree esistenti.
      */
-    private int progressivo(String idSala) {
-        if (idSala == null || !idSala.matches("S\\d+")) {
+    private int massimoProgressivoAree() {
+        int massimo = 0;
+
+        for (Area area : gestoreDB.trovaTutteLeAree()) {
+            massimo = Math.max(massimo, progressivo(area.getIdArea(), "A"));
+        }
+
+        return massimo;
+    }
+
+    /**
+     * Estrae il numero da un identificativo come S007 o A012, oppure zero se
+     * non segue quel formato, come i vecchi id casuali.
+     *
+     * Gli identificativi delle postazioni, del tipo P-A001-01, non seguono il
+     * formato e vengono percio' ignorati.
+     */
+    private int progressivo(String identificativo, String prefisso) {
+        if (identificativo == null || !identificativo.matches(prefisso + "\\d+")) {
             return 0;
         }
-        return Integer.parseInt(idSala.substring(1));
+        return Integer.parseInt(identificativo.substring(prefisso.length()));
     }
 
     /**
@@ -248,13 +267,20 @@ public class GestioneSaleController {
         int perArea = numPostazioniTotali / daCreare.size();
         int resto = numPostazioniTotali % daCreare.size();
 
+        // Le aree proseguono la numerazione globale, le postazioni ripartono
+        // da uno dentro ciascuna area: A004 avra' P-A004-01, P-A004-02 e cosi' via.
+        int numeroArea = massimoProgressivoAree();
+
         for (int i = 0; i < daCreare.size(); i++) {
-            Area area = new Area(UUID.randomUUID().toString(), daCreare.get(i));
+            numeroArea++;
+            String idArea = String.format("A%03d", numeroArea);
+
+            Area area = new Area(idArea, daCreare.get(i));
             sala.aggiungiArea(area);
 
             int quante = perArea + (i == 0 ? resto : 0);
             for (int j = 0; j < quante; j++) {
-                area.aggiungiPostazione(new Postazione(UUID.randomUUID().toString()));
+                area.aggiungiPostazione(new Postazione(String.format("P-%s-%02d", idArea, j + 1)));
             }
         }
     }
