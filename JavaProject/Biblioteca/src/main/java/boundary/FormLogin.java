@@ -13,7 +13,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -131,13 +130,5 @@ public class FormLogin implements BoundaryAutenticazione {
         frameCorrente.setResizable(false);
         frameCorrente.setLocationRelativeTo(null);
         return frameCorrente;
-    }
-
-    /** Avvio in isolamento */
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new FormLogin().apriFormLogin();
-            frame.setVisible(true);
-        });
     }
 }

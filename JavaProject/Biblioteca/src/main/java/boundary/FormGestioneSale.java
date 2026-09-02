@@ -15,7 +15,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -213,22 +212,5 @@ public class FormGestioneSale implements BoundaryGestioneSale {
         frame.setSize(640, 460);
         frame.setLocationRelativeTo(null);
         return frame;
-    }
-
-    /**
-     * Avvio di prova!!!! Finche' non c'e' il Log-in, il codice del bibliotecario si
-     * passa come argomento; senza argomenti si usa quello dei dati di prova.
-     */
-    public static void main(String[] args) {
-        String codice = args.length > 0 ? args[0] : "B1234";
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                JFrame frame = new FormGestioneSale(codice).apriFormGestioneSale();
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.setVisible(true);
-            }
-        });
     }
 }
