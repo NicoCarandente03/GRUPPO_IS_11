@@ -21,9 +21,9 @@ import java.util.List;
  * cascade ALL con orphanRemoval.
  *
  * Le interrogazioni sulla disponibilita' sono risolte navigando le associazioni
- * fra le entity, senza passare dai DAO, come richiede la regola per cui le
+ * fra le entity, senza interrogare, come richiede la regola per cui le
  * Entity non conoscono il livello di persistenza. Perche' funzionino, il grafo
- * deve essere gia' caricato: se ne occupa SalaStudioDAO.
+ * deve essere gia' caricato: se ne occupa il GestorePersistenza.
  */
 @Entity
 @Table(name = "SalaStudio")

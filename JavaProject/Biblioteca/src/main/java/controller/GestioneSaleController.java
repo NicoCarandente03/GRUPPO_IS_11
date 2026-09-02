@@ -201,8 +201,6 @@ public class GestioneSaleController {
      * Il progressivo si ricava dal massimo gia' assegnato, cosi' l'id resta
      * leggibile e resta valido anche se una sala viene cancellata.
      *
-     * Nel diagramma il metodo e' dichiarato void per un refuso: restituisce la
-     * stringa generata, altrimenti il costruttore della sala non avrebbe l'id.
      */
     public String generaIdSala() {
         int massimo = 0;

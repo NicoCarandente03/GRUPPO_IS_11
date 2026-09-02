@@ -77,8 +77,6 @@ public class Postazione {
      * indicate: deve essere agibile e non avere gia' una prenotazione attiva o
      * confermata sullo stesso slot.
      *
-     * Nel diagramma il metodo e' dichiarato void, ma il flusso
-     * SelezionePostazioneSpecifica ne usa l'esito booleano.
      */
     public boolean isLibera(LocalDate data, String fasciaOraria) {
         if (!isDisponibile) {

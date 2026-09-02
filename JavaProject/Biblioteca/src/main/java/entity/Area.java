@@ -69,7 +69,7 @@ public class Area {
 
     /**
      * Aggiunge una postazione all'area e mantiene allineato il riferimento
-     * inverso. Nel diagramma delle classi il metodo si chiama cosi'.
+     * inverso.
      */
     public void aggiungiPostazione(Postazione postazione) {
         if (postazione == null || postazioni.contains(postazione)) {
@@ -113,8 +113,8 @@ public class Area {
      *
      * In aggiunta crea nuove postazioni con un identificativo generato qui; in
      * riduzione stacca solo le postazioni prive di prenotazioni, per non perdere
-     * lo storico. La cancellazione delle righe resta a PostazioneDAO, perche'
-     * l'aggregazione non prevede orphanRemoval.
+     * lo storico. La cancellazione delle righe è delegata al GestorePersistenza,
+     * perche' l'aggregazione non prevede orphanRemoval.
      */
     public void sincronizzaPostazioni(int numPostazioni) {
         int numero = massimoNumeroPostazione();

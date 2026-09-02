@@ -283,7 +283,7 @@ public class GestionePrenotazioneController {
      * I controlli sono nell'ordine dei casi di test del piano funzionale, e ogni
      * fallimento solleva una BusinessException con il messaggio previsto: un
      * valore di ritorno booleano non basterebbe a distinguere cinque errori
-     * diversi. La firma resta void come nel diagramma delle classi.
+     * diversi.
      *
      * Il parametro con la matricola del richiedente non compare nel diagramma,
      * ma serve al controllo di proprieta' richiesto dal caso di test 3: uno

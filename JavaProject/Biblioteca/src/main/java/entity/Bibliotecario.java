@@ -14,9 +14,6 @@ import java.util.List;
  * Bibliotecario che gestisce le sale studio. Estende Utente e aggiunge il codice
  * identificativo, che e' anche la chiave primaria della tabella.
  *
- * Nel diagramma l'attributo si chiama codIdentificativo mentre il getter e'
- * getCodiceIdentificativo: si usa il nome per esteso, coerente con il getter e
- * con la traduzione delle classi nella documentazione.
  */
 @Entity
 @Table(name = "Bibliotecario")

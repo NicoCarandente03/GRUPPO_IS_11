@@ -13,8 +13,6 @@ import entity.Postazione;
  * poterlo sostituire con un mock nei test, come chiedono i vincoli
  * architetturali della specifica.
  *
- * Nel diagramma i parametri idSala e data di invioPromemoria sono uniti in un
- * unico argomento per un refuso: qui sono separati.
  */
 public interface ServizioDiNotifiche {
 
