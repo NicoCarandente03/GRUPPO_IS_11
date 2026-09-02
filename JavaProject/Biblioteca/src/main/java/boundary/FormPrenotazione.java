@@ -12,7 +12,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -478,23 +477,5 @@ public class FormPrenotazione implements BoundaryPrenotazione {
         frame.setSize(650, 420);
         frame.setLocationRelativeTo(null);
         return frame;
-    }
-
-    /**
-     * MAIN DI TEST
-     * Permette di avviare questa singola schermata in modo isolato per testarne
-     * il funzionamento grafico senza dover avviare l'intero sistema.
-     */
-    public static void main(String[] args) {
-        String matricola = args.length > 0 ? args[0] : "N46001234";
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                JFrame frame = new FormPrenotazione(matricola).apriFormPrenotazione();
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.setVisible(true);
-            }
-        });
     }
 }

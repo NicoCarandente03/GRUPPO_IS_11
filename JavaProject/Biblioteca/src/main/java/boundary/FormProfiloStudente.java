@@ -12,7 +12,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -219,24 +218,5 @@ public class FormProfiloStudente implements BoundaryProfiloStudente {
         frame.setSize(840, 400);
         frame.setLocationRelativeTo(null);
         return frame;
-    }
-
-    /**
-     * !!!!!!!!!!!
-     * Avvio di prova. Finche' non c'e' il Log-in, la matricola si passa come
-     * argomento; senza argomenti si usa quella dei dati di prova.
-     * !!!!!!!!!!!
-     */
-    public static void main(String[] args) {
-        String matricola = args.length > 0 ? args[0] : "N46001234";
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                JFrame frame = new FormProfiloStudente(matricola).apriFormProfiloStudente();
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.setVisible(true);
-            }
-        });
     }
 }

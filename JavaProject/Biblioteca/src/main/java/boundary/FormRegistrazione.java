@@ -11,7 +11,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -164,16 +163,5 @@ public class FormRegistrazione implements BoundaryAutenticazione {
     @Override
     public void login() {
         mostraMessaggio("Funzionalità di Login in via di sviluppo.");
-    }
-
-    /**
-     * Avvio per collaudare questa singola finestra senza dover avviare l'intero applicativo.
-     */
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new FormRegistrazione().apriFormRegistrazione();
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setVisible(true);
-        });
     }
 }
