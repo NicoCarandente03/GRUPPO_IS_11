@@ -196,13 +196,34 @@ public class GestioneSaleController {
     }
 
     /**
-     * Genera l'identificativo della nuova sala.
+     * Genera l'identificativo della nuova sala nel formato: 
+     * una S seguita da tre cifre
+     *
+     * Il progressivo si ricava dal massimo gia' assegnato, cosi' l'id resta
+     * leggibile e resta valido anche se una sala viene cancellata.
      *
      * Nel diagramma il metodo e' dichiarato void per un refuso: restituisce la
      * stringa generata, altrimenti il costruttore della sala non avrebbe l'id.
      */
     public String generaIdSala() {
-        return UUID.randomUUID().toString();
+        int massimo = 0;
+
+        for (SalaStudio sala : gestoreDB.trovaTutteLeSale()) {
+            massimo = Math.max(massimo, progressivo(sala.getIdSala()));
+        }
+
+        return String.format("S%03d", massimo + 1);
+    }
+
+    /**
+     * Estrae il numero da un identificativo come S007, oppure zero se l'id non
+     * segue quel formato, come i vecchi id casuali.
+     */
+    private int progressivo(String idSala) {
+        if (idSala == null || !idSala.matches("S\\d+")) {
+            return 0;
+        }
+        return Integer.parseInt(idSala.substring(1));
     }
 
     /**
